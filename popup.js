@@ -84,7 +84,9 @@ function addItemsToBoth (items, currentWindowId) {
 		const windowDivAllWindows = document.createElement("div");
 		windowDivAllWindows.windowId = windowID;
 		windowDivAllWindows.classList.add("window");
-		windowDivAllWindows.innerHTML = `<h2>Window ${windowID}</h2>`;
+		const windowHeader = document.createElement("h2");
+		windowHeader.textContent = `Window ${windowID}`;
+		windowDivAllWindows.appendChild(windowHeader);
 		const windowDivCurrentWindow = windowDivAllWindows.cloneNode(true);
 
 		items.forEach((item, tabIndex) => {
@@ -122,11 +124,38 @@ function buildListItem (data, tabIndex) {
 	}
 	listItem.tabIndex = tabIndex;
 	listItem.tabid = tabID;
-	listItem.innerHTML = `
-	<img class="mr-2" width='16' height='16' src="${data.favIconUrl}" alt="favicon">
-	<div class='truncated'><span style=cursor:pointer tabid=${tabID} title='${data.url}'>${data.title}</span></div>
-	<span class="remove-btn text-red-500">❌</span>
-	`;
+
+	// Create favicon image safely
+	const favicon = document.createElement("img");
+	favicon.classList.add("mr-2");
+	favicon.setAttribute("width", "16");
+	favicon.setAttribute("height", "16");
+	favicon.setAttribute("alt", "favicon");
+	if (data.favIconUrl) {
+		favicon.src = data.favIconUrl;
+	}
+	// Handle broken favicon images gracefully
+	favicon.addEventListener('error', function() {
+		this.classList.add('favicon-broken');
+	});
+	listItem.appendChild(favicon);
+
+	// Create title container safely
+	const titleDiv = document.createElement("div");
+	titleDiv.classList.add("truncated");
+	const titleSpan = document.createElement("span");
+	titleSpan.style.cursor = "pointer";
+	titleSpan.setAttribute("tabid", tabID);
+	titleSpan.setAttribute("title", data.url || "");
+	titleSpan.textContent = data.title || "Untitled";
+	titleDiv.appendChild(titleSpan);
+	listItem.appendChild(titleDiv);
+
+	// Create remove button safely
+	const removeBtn = document.createElement("span");
+	removeBtn.classList.add("remove-btn", "text-red-500");
+	removeBtn.textContent = "❌";
+	listItem.appendChild(removeBtn);
 
 	listItem.addEventListener(
 		"click",
@@ -201,45 +230,49 @@ function closeOpenedTab (tabID) {
 	// updateCounterText();
 }
 
-function updateSearchPlaceholder (count) {
-	const activeTabContent = document.querySelector(".tab-content.active");
-	const items = activeTabContent.querySelectorAll(".list-item");
-	const itemCount = count !== undefined ? count : items.length;
-	searchInput.placeholder = `Search... (${itemCount} items)`;
-}
-
-function updateCounterText (count) {
-	updateSearchPlaceholder(count);
-
-	// get element with id="currentWindow" and get the number of items in current window
+function updateCounterText () {
 	const currentWindowContent = document.getElementById("currentWindow");
-	const currentWindowItems = currentWindowContent.querySelectorAll(".list-item");
-	// get element with id="allWindow" and get the number of items in all windows
 	const allWindowContent = document.getElementById("allWindow");
-	const allWindowItems = allWindowContent.querySelectorAll(".list-item");
+	const isSearching = searchInput.value.trim() !== "";
+	const searchIcon = isSearching ? "🔎 " : "";
 
-	// get active tab-button
-	// if it's id="tabTitleCurrent", then get the number of tabs in current window and replace the text in id="tabTitleCurrent"
-	// if it's id="tabTitleAll", then get the number of tabs in all windows and replace the text in id="tabTitleAll"
-	const activeTabButton = document.querySelector(".tab-button.active");
-	if (activeTabButton.id === "tabTitleCurrent") {
-		const itemCount = count !== undefined ? count : currentWindowItems.length;
-		document.getElementById("tabTitleCurrent").innerHTML = `Current ( ${itemCount} )`;
-		// count the number of windows and the number of tabs in all windows
-		chrome.windows.getAll({ "populate": true }, (window_list) => {
-			document.getElementById("tabTitleAll").innerHTML
-				= `All ( ${allWindowItems.length} in ${window_list.length} )`;
-		});
-	} else if (activeTabButton.id === "tabTitleAll") {
-		const itemCount = count !== undefined ? count : allWindowItems.length;
-		document.getElementById("tabTitleCurrent").innerHTML = `Current ( ${currentWindowItems.length} )`;
-		// count the number of windows
-		chrome.windows.getAll({ "populate": true }, (window_list) => {
-			// get the number of tabs in all windows
-			document.getElementById("tabTitleAll").innerHTML
-				= `All ( ${itemCount} in ${window_list.length} )`;
-		});
+	// Count visible items in both tabs
+	let currentVisibleCount, allVisibleCount;
+
+	if (isSearching) {
+		// Count only visible items when searching
+		const currentVisible = currentWindowContent.querySelectorAll(".list-item");
+		currentVisibleCount = Array.from(currentVisible).filter(item => item.style.display !== "none").length;
+
+		const allVisible = allWindowContent.querySelectorAll(".list-item");
+		allVisibleCount = Array.from(allVisible).filter(item => item.style.display !== "none").length;
+	} else {
+		// Count all items when not searching
+		currentVisibleCount = currentWindowContent.querySelectorAll(".list-item").length;
+		allVisibleCount = allWindowContent.querySelectorAll(".list-item").length;
 	}
+
+	// Update search placeholder
+	const activeTabContent = document.querySelector(".tab-content.active");
+	const activeCount = activeTabContent === currentWindowContent ? currentVisibleCount : allVisibleCount;
+	searchInput.placeholder = `Search... (${activeCount} items)`;
+
+	// Update both tab titles
+	const tabTitleCurrent = document.getElementById("tabTitleCurrent");
+	const tabTitleAll = document.getElementById("tabTitleAll");
+
+	tabTitleCurrent.textContent = `${searchIcon}Current (${currentVisibleCount})`;
+
+	// Count windows and update "All" tab title
+	chrome.windows.getAll({ "populate": true }, (window_list) => {
+		// Count visible windows when searching
+		let visibleWindowCount = window_list.length;
+		if (isSearching) {
+			const windows = allWindowContent.querySelectorAll(".window");
+			visibleWindowCount = Array.from(windows).filter(w => w.style.display !== "none").length;
+		}
+		tabTitleAll.textContent = `${searchIcon}All (${allVisibleCount} in ${visibleWindowCount})`;
+	});
 }
 
 //get tabs in current window
@@ -374,7 +407,7 @@ function handleKeyDown (e) {
 	case "Delete":
 		selectedItems = activeTabContent.querySelectorAll(".list-item.selected");
 		selectedItems.forEach((item) => {
-			closeOpenedTab(item.id);
+			closeOpenedTab(item.tabid);
 			item.remove();
 		});
 		updateCounterText();
@@ -416,24 +449,79 @@ function handleKeyDown (e) {
 
 function handleSearchInput (e) {
 	const searchTerm = searchInput.value.toLowerCase();
-	const activeTabContent = document.querySelector(".tab-content.active");
-	const items = activeTabContent.querySelectorAll(".list-item");
-	let visibleCount = 0;
 
-	if (items.length === 0) {
+	// Filter both tab contents simultaneously
+	const allTabContents = document.querySelectorAll(".tab-content");
+
+	allTabContents.forEach((tabContent) => {
+		const items = tabContent.querySelectorAll(".list-item");
+
+		// Filter individual tabs
+		items.forEach((item) => {
+			const text = item.textContent.toLowerCase();
+			const isVisible = text.includes(searchTerm);
+			item.style.display = isVisible ? "flex" : "none";
+		});
+
+		// Hide windows that have no visible tabs
+		const windows = tabContent.querySelectorAll(".window");
+		windows.forEach((windowDiv) => {
+			const hasVisibleTabs = Array.from(windowDiv.querySelectorAll(".list-item")).some(item => {
+				return item.style.display !== "none";
+			});
+			windowDiv.style.display = hasVisibleTabs ? "block" : "none";
+		});
+	});
+
+	// Update counters for both tabs
+	updateCounterText();
+}
+
+// Check if keyboard shortcut is set and show banner if not
+async function checkKeyboardShortcut() {
+	// Check if user has dismissed the banner before
+	const { shortcutBannerDismissed } = await chrome.storage.local.get(['shortcutBannerDismissed']);
+	if (shortcutBannerDismissed) {
 		return;
 	}
 
-	items.forEach((item) => {
-		const text = item.textContent.toLowerCase();
-		const isVisible = text.includes(searchTerm);
-		item.style.display = isVisible ? "flex" : "none";
-		if (isVisible) {
-			visibleCount++;
+	// Check if the shortcut is configured
+	chrome.commands.getAll((commands) => {
+		const actionCommand = commands.find(cmd => cmd.name === '_execute_action');
+
+		// If shortcut is not set or empty, show the banner
+		if (!actionCommand || !actionCommand.shortcut) {
+			const banner = document.getElementById('shortcutBanner');
+			if (banner) {
+				banner.classList.remove('hidden');
+			}
 		}
 	});
+}
 
-	updateCounterText(visibleCount);
+// Setup keyboard shortcut banner buttons
+function setupShortcutBanner() {
+	const openBtn = document.getElementById('openShortcutsBtn');
+	const dismissBtn = document.getElementById('dismissBannerBtn');
+
+	if (openBtn) {
+		openBtn.addEventListener('click', () => {
+			// Open Chrome's keyboard shortcuts page
+			chrome.tabs.create({ url: 'chrome://extensions/shortcuts' });
+		});
+	}
+
+	if (dismissBtn) {
+		dismissBtn.addEventListener('click', async () => {
+			// Hide the banner
+			const banner = document.getElementById('shortcutBanner');
+			if (banner) {
+				banner.classList.add('hidden');
+			}
+			// Remember user's choice
+			await chrome.storage.local.set({ shortcutBannerDismissed: true });
+		});
+	}
 }
 
 function init () {
@@ -449,6 +537,10 @@ function init () {
 	// 	addItems(document.getElementById("allWindow"), tabs, "");
 	// 	updateCounterText();
 	// });
+
+	// Check keyboard shortcut status
+	checkKeyboardShortcut();
+	setupShortcutBanner();
 
 	getAllTabs((tabs) => {
 		// get active window id
@@ -479,7 +571,12 @@ function init () {
 			// find div id="currentWindow" and add 'active' class
 			// document.getElementById("currentWindow").classList.add('active');
 
-			updateCounterText();
+			// Update counter based on search filter state
+			if (searchInput.value) {
+				handleSearchInput();
+			} else {
+				updateCounterText();
+			}
 
 			scrollToCurrentItem();
 		});

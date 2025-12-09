@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Tab Duke",
-  "version": "0.1.1",
+  "name": "TabDuke Tabs management Chrome extension",
+  "version": "0.1.2",
   "description": "Displays the count and list of open tabs from current or all windows (configurable) and allows you to select and/or close them.",
   "action": {
     "default_popup": "popup.html",
@@ -9,6 +9,14 @@
       "16": "images/icon16.png",
       "48": "images/icon48.png",
       "128": "images/icon128.png"
+    }
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Alt+Z",
+        "mac": "Command+Z"
+      }
     }
   },
   "options_ui": {

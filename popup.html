@@ -22,6 +22,20 @@
         </ul>
       </div>
       <div class="p-1 relative">
+        <!-- Keyboard shortcut notification banner -->
+        <div id="shortcutBanner" class="hidden bg-yellow-100 border border-yellow-400 px-3 py-2 mb-2 rounded text-xs">
+          <div class="flex items-center justify-between">
+            <div class="flex-1">
+              💡 <strong>Tip:</strong> Set keyboard shortcut <code class="bg-white px-1.5 py-0.5 rounded font-semibold">Alt+Z</code> for quick access
+            </div>
+            <button id="openShortcutsBtn" class="bg-blue-500 text-white px-3 py-1 rounded border-none cursor-pointer text-xs ml-2 whitespace-nowrap">
+              Open Settings
+            </button>
+            <button id="dismissBannerBtn" class="bg-transparent border-none cursor-pointer px-2 py-1 text-base ml-1" aria-label="Dismiss notification">
+              ×
+            </button>
+          </div>
+        </div>
         <!-- <span class="search-icon">🔍</span> -->
         <input type="text" placeholder=" 🔎 Search..."
           class="search-bar pl-12 p-2 w-full rounded border border-gray-300" id="searchInput" autofocus>
