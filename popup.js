@@ -762,13 +762,9 @@ function handleKeyDown (e) {
 			if (leftNewItems.length > 0) {
 				restoreFocusAfterTabSwitch(leftNewItems);
 			}
-		} else if (searchInput !== document.activeElement) {
-			// Plain ArrowLeft in list: Navigate to previous item (horizontal navigation)
-			e.preventDefault();
-			newIndex = (currentItemIndex - 1 + items.length) % items.length;
-			focusAndUpdateIndex(items[newIndex], newIndex, items, 'instant', true);
 		}
 		// In search input: allow browser default (cursor movement)
+		// In list: no plain arrow action (only Ctrl+Arrow for tab switching)
 		break;
 	case "ArrowRight":
 		if (e.ctrlKey || e.metaKey) {
@@ -784,13 +780,9 @@ function handleKeyDown (e) {
 			if (rightNewItems.length > 0) {
 				restoreFocusAfterTabSwitch(rightNewItems);
 			}
-		} else if (searchInput !== document.activeElement) {
-			// Plain ArrowRight in list: Navigate to next item (horizontal navigation)
-			e.preventDefault();
-			newIndex = (currentItemIndex + 1) % items.length;
-			focusAndUpdateIndex(items[newIndex], newIndex, items, 'instant', true);
 		}
 		// In search input: allow browser default (cursor movement)
+		// In list: no plain arrow action (only Ctrl+Arrow for tab switching)
 		break;
 	case "ArrowUp":
 		if (e.altKey && currentTabIndex === 1 && searchInput !== document.activeElement) {
@@ -931,7 +923,7 @@ function handleKeyDown (e) {
 			if (selectedItems.length > 1 && !multiSelectWarningActive) {
 				// First Enter: Show warning
 				const originalPlaceholder = searchInput.placeholder;
-				searchInput.placeholder = `⚠️ ${selectedItems.length} tabs selected - Press Enter again to open all, Escape to cancel`;
+				searchInput.placeholder = `⚠️ ${selectedItems.length} tabs selected - Use Delete to close all, Escape to cancel`;
 				searchInput.classList.add('warning-state');
 				multiSelectWarningActive = true;
 
@@ -940,10 +932,7 @@ function handleKeyDown (e) {
 					clearMultiSelectWarning();
 				}, 5000);
 			} else if (multiSelectWarningActive) {
-				// Second Enter: Execute multi-tab open
-				selectedItems.forEach(item => {
-					goToOpenedTab(item.tabid, item.windowId);
-				});
+				// Second Enter: Clear warning, no action (multi-selection is for bulk operations like Delete)
 				clearMultiSelectWarning();
 			} else {
 				// Single selection or no warning: Normal navigation
