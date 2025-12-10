@@ -124,6 +124,7 @@ function buildListItem (data, tabIndex) {
 	}
 	listItem.tabIndex = tabIndex;
 	listItem.tabid = tabID;
+	listItem.windowId = data.windowId;
 
 	// Create favicon image safely
 	const favicon = document.createElement("img");
@@ -215,13 +216,28 @@ function removeItemFromLists (tabID) {
 // }
 // addSampleItems(document.getElementById('currentWindow'), 15, 'Sample');
 
+
 // function to display the selected tab
 function goToOpenedTab (tabID, windowID) {
-	// console.log("goToOpenedTab tabID: ", tabID);
-	// console.log("goToOpenedTab windowID: ", windowID);
-	chrome.windows.update(windowID, { "focused": true });
-	chrome.tabs.update(tabID, { "active": true });
-	// updateCounterText();
+	if (!tabID || !windowID) {
+		return;
+	}
+
+	// Check if target window is current window
+	chrome.windows.getCurrent((currentWindow) => {
+		const isCurrentWindow = windowID === currentWindow.id;
+
+		if (isCurrentWindow) {
+			// Current window - skip window focus, go directly to tab switch
+			// (avoids popup closing before tab switch completes)
+			chrome.tabs.update(tabID, { "active": true });
+		} else {
+			// Other window - need to focus window first, then switch tab
+			chrome.windows.update(windowID, { "focused": true }, () => {
+				chrome.tabs.update(tabID, { "active": true });
+			});
+		}
+	});
 }
 
 // function to close the selected tab
@@ -343,6 +359,31 @@ function scrollToCurrentItem () {
 	});
 }
 
+// Helper function to find visible (non-filtered) items
+function findVisibleItems(items) {
+	return items.filter(item => item.style.display !== 'none');
+}
+
+// Helper function to find first visible item during search navigation
+function findFirstVisibleItem(items) {
+	for (let i = 0; i < items.length; i++) {
+		if (items[i].style.display !== 'none') {
+			return { item: items[i], index: i };
+		}
+	}
+	return null;
+}
+
+// Helper function to find last visible item during search navigation
+function findLastVisibleItem(items) {
+	for (let i = items.length - 1; i >= 0; i--) {
+		if (items[i].style.display !== 'none') {
+			return { item: items[i], index: i };
+		}
+	}
+	return null;
+}
+
 function handleKeyDown (e) {
 
 	const currentTabIndex = [...tabs].findIndex((tab) => {
@@ -355,7 +396,11 @@ function handleKeyDown (e) {
 	let newTabIndex;
 	let selectedItems;
 
-	if (items.length === 0) {
+	// Allow search navigation even when no visible items
+	const isNavigatingFromSearch = (e.key === 'ArrowUp' || e.key === 'ArrowDown') &&
+	                               searchInput === document.activeElement;
+
+	if (items.length === 0 && !isNavigatingFromSearch) {
 		return;
 	}
 
@@ -370,9 +415,12 @@ function handleKeyDown (e) {
 		break;
 	case "ArrowUp":
 		if (searchInput === document.activeElement) {
-			// If the search input is focused, move focus to the last item
-			items[items.length - 1].focus();
-			currentItemIndex = items.length - 1;
+			// Go to last visible item, stay in search if none visible
+			const lastVisible = findLastVisibleItem(items);
+			if (lastVisible) {
+				lastVisible.item.focus();
+				currentItemIndex = lastVisible.index;
+			}
 		} else {
 			newIndex = (currentItemIndex - 1 + items.length) % items.length;
 			items[newIndex].focus();
@@ -381,9 +429,12 @@ function handleKeyDown (e) {
 		break;
 	case "ArrowDown":
 		if (searchInput === document.activeElement) {
-			// If the search input is focused, move focus to the first item
-			items[0].focus();
-			currentItemIndex = 0;
+			// Go to first visible item, stay in search if none visible
+			const firstVisible = findFirstVisibleItem(items);
+			if (firstVisible) {
+				firstVisible.item.focus();
+				currentItemIndex = firstVisible.index;
+			}
 		} else {
 			newIndex = (currentItemIndex + 1) % items.length;
 			items[newIndex].focus();
@@ -413,12 +464,15 @@ function handleKeyDown (e) {
 		updateCounterText();
 		break;
 	case "Enter":
-		// If the search input is focused, go to the first item
+		// If the search input is focused, go to the first visible item
 		if (searchInput === document.activeElement) {
-			items[0].focus();
-			currentItemIndex = 0;
+			const firstVisible = findFirstVisibleItem(items);
+			if (firstVisible) {
+				firstVisible.item.focus();
+				currentItemIndex = firstVisible.index;
+			}
 		} else {
-			goToOpenedTab(items[currentItemIndex].id, items[currentItemIndex].windowId);
+			goToOpenedTab(items[currentItemIndex].tabid, items[currentItemIndex].windowId);
 		}
 		break;
 	case "Escape":

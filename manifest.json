@@ -33,6 +33,7 @@
   },
   "permissions": [
     "tabs",
+    "windows",
     "storage",
     "alarms"
   ],
