@@ -109,3 +109,15 @@ body {
 .list-item img.favicon-broken {
   visibility: hidden;
 }
+
+/* Multi-select warning state styling */
+.search-bar.warning-state {
+  border-color: #f56565 !important;
+  background-color: #fff5f5 !important;
+  color: #c53030 !important;
+}
+
+.search-bar.warning-state::placeholder {
+  color: #c53030 !important;
+  font-weight: 500;
+}

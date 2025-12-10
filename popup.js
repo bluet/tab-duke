@@ -2,6 +2,8 @@ const tabs = document.querySelectorAll(".tab-button");
 const tabContents = document.querySelectorAll(".tab-content");
 const searchInput = document.getElementById("searchInput");
 let currentItemIndex = 0;
+let lastClickedIndex = -1; // For shift+click range selection
+let multiSelectWarningActive = false; // For multi-select Enter warning
 
 // Focus restoration system - separate tracking per tab
 let focusRestoreData = {
@@ -45,6 +47,16 @@ function focusAndUpdateIndex(item, index, items, scrollMode = 'instant', saveFoc
 
 	if (saveFocus) {
 		saveCurrentFocusPosition(items);
+	}
+}
+
+// Multi-select warning management
+function clearMultiSelectWarning() {
+	if (multiSelectWarningActive) {
+		multiSelectWarningActive = false;
+		searchInput.classList.remove('warning-state');
+		// Restore original placeholder
+		updateCounterText(); // This will reset the placeholder
 	}
 }
 
@@ -326,8 +338,48 @@ function buildListItem (data, tabIndex) {
 					removeItemFromLists(data.id);
 					closeOpenedTab(data.id);
 					updateCounterText();
+				} else if (event.ctrlKey || event.metaKey) {
+					// Ctrl+click: Toggle individual selection
+					event.preventDefault();
+					const activeTabContent = document.querySelector(".tab-content.active");
+					const items = [...activeTabContent.querySelectorAll(".list-item")];
+					const clickedIndex = items.indexOf(listItem);
+
+					// Toggle selection on clicked item
+					listItem.classList.toggle("selected");
+					listItem.classList.toggle("bg-blue-100");
+
+					// Update focus and index for continued keyboard navigation
+					focusAndUpdateIndex(listItem, clickedIndex, items);
+					lastClickedIndex = clickedIndex;
+				} else if (event.shiftKey && lastClickedIndex >= 0) {
+					// Shift+click: Range selection from last clicked to current
+					event.preventDefault();
+					const activeTabContent = document.querySelector(".tab-content.active");
+					const items = [...activeTabContent.querySelectorAll(".list-item")];
+					const clickedIndex = items.indexOf(listItem);
+
+					// Clear existing selections
+					items.forEach(item => {
+						item.classList.remove("selected", "bg-blue-100");
+					});
+
+					// Select range (include both endpoints)
+					const startIndex = Math.min(lastClickedIndex, clickedIndex);
+					const endIndex = Math.max(lastClickedIndex, clickedIndex);
+
+					for (let i = startIndex; i <= endIndex; i++) {
+						// Only select visible items (skip filtered/hidden)
+						if (items[i] && items[i].style.display !== 'none') {
+							items[i].classList.add("selected", "bg-blue-100");
+						}
+					}
+
+					// Update focus and index for continued keyboard navigation
+					focusAndUpdateIndex(listItem, clickedIndex, items);
+					lastClickedIndex = clickedIndex;
 				} else {
-					// console.log("listItem goToOpenedTab click");
+					// Regular click: Navigate to tab
 					goToOpenedTab(data.id, data.windowId);
 					updateCounterText();
 				}
@@ -715,10 +767,36 @@ function handleKeyDown (e) {
 				focusAndUpdateIndex(firstVisible.item, firstVisible.index, items, 'smooth');
 			}
 		} else {
-			goToOpenedTab(items[currentItemIndex].tabid, items[currentItemIndex].windowId);
+			// Check for multi-select warning
+			selectedItems = activeTabContent.querySelectorAll(".list-item.selected");
+
+			if (selectedItems.length > 1 && !multiSelectWarningActive) {
+				// First Enter: Show warning
+				const originalPlaceholder = searchInput.placeholder;
+				searchInput.placeholder = `⚠️ ${selectedItems.length} tabs selected - Press Enter again to open all, Escape to cancel`;
+				searchInput.classList.add('warning-state');
+				multiSelectWarningActive = true;
+
+				// Auto-clear warning after 5 seconds
+				setTimeout(() => {
+					clearMultiSelectWarning();
+				}, 5000);
+			} else if (multiSelectWarningActive) {
+				// Second Enter: Execute multi-tab open
+				selectedItems.forEach(item => {
+					goToOpenedTab(item.tabid, item.windowId);
+				});
+				clearMultiSelectWarning();
+			} else {
+				// Single selection or no warning: Normal navigation
+				goToOpenedTab(items[currentItemIndex].tabid, items[currentItemIndex].windowId);
+			}
 		}
 		break;
 	case "Escape":
+		// Clear multi-select warning if active
+		clearMultiSelectWarning();
+
 		// Context-aware Escape behavior
 		if (searchInput === document.activeElement && searchInput.value !== "") {
 			// Escape in search with text: Clear text, stay in search
@@ -747,6 +825,23 @@ function handleKeyDown (e) {
 			}
 		}
 		// Final Escape (no text, no selections) allows popup to close naturally
+		break;
+	case 'a':
+	case 'A':
+		if (e.ctrlKey || e.metaKey) {
+			// Ctrl+A: Context-aware select all
+			if (searchInput === document.activeElement) {
+				// In search: allow browser default (select all text)
+				return;
+			} else {
+				// In list: select all visible items
+				e.preventDefault();
+				const visibleItems = findVisibleItems(items);
+				visibleItems.forEach(item => {
+					item.classList.add("selected", "bg-blue-100");
+				});
+			}
+		}
 		break;
 	default:
 		// if it's a special character, do nothing
