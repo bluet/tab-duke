@@ -16,9 +16,21 @@
   <div class="container mx-auto">
     <div class="bg-white shadow-lg rounded-lg">
       <div class="border-b" id="tabMenu">
-        <ul class="flex">
-          <li class="tab-button active px-6 py-3 border-b-2 font-semibold text-sm" data-tab-target="#currentWindow" id="tabTitleCurrent">Current Window</li>
-          <li class="tab-button px-6 py-3 border-b-2 font-semibold text-sm" data-tab-target="#allWindow" id="tabTitleAll">All Windows</li>
+        <ul class="flex" role="tablist" aria-label="Tab view selector">
+          <li class="tab-button active px-6 py-3 border-b-2 font-semibold text-sm"
+              data-tab-target="#currentWindow"
+              id="tabTitleCurrent"
+              role="tab"
+              aria-selected="true"
+              aria-controls="currentWindow"
+              tabindex="0">Current Window</li>
+          <li class="tab-button px-6 py-3 border-b-2 font-semibold text-sm"
+              data-tab-target="#allWindow"
+              id="tabTitleAll"
+              role="tab"
+              aria-selected="false"
+              aria-controls="allWindow"
+              tabindex="-1">All Windows</li>
         </ul>
       </div>
       <div class="p-1 relative">
@@ -38,15 +50,48 @@
         </div>
         <!-- <span class="search-icon">🔍</span> -->
         <input type="text" placeholder=" 🔎 Search..."
-          class="search-bar pl-12 p-2 w-full rounded border border-gray-300" id="searchInput">
-        <div id="currentWindow" class="tab-content active">
-          <!-- Repeat this block for each tab item in the current window -->
+          class="search-bar pl-12 p-2 w-full rounded border border-gray-300"
+          id="searchInput"
+          aria-label="Search browser tabs"
+          role="searchbox"
+          aria-expanded="false"
+          aria-describedby="searchInstructions">
+        <div id="currentWindow"
+             class="tab-content active"
+             role="tabpanel"
+             aria-labelledby="tabTitleCurrent">
+          <div role="listbox"
+               aria-label="Browser tabs in current window"
+               aria-multiselectable="true"
+               aria-activedescendant="">
+            <!-- Dynamic list items here -->
+          </div>
         </div>
-        <div id="allWindow" class="tab-content">
-          <!-- Content for all windows will go here -->
+        <div id="allWindow"
+             class="tab-content"
+             role="tabpanel"
+             aria-labelledby="tabTitleAll">
+          <div role="listbox"
+               aria-label="Browser tabs in all windows"
+               aria-multiselectable="true"
+               aria-activedescendant="">
+            <!-- Dynamic list items here -->
+          </div>
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- Hidden instructions for screen readers -->
+  <div id="searchInstructions" class="sr-only">
+    Type to filter tabs. Use arrow keys to navigate results. Press Enter to open focused tab.
+  </div>
+
+  <!-- Live region for announcements -->
+  <div id="sr-announcements"
+       aria-live="polite"
+       aria-atomic="true"
+       class="sr-only">
   </div>
 
   <script src="popup.js"></script>

@@ -45,6 +45,9 @@ function focusAndUpdateIndex(item, index, items, scrollMode = 'instant', saveFoc
 	currentItemIndex = index;
 	updateRovingTabindex(items, index);
 
+	// Update ARIA active descendant - Phase 4 Accessibility
+	updateActiveDescendant(item);
+
 	if (saveFocus) {
 		saveCurrentFocusPosition(items);
 	}
@@ -293,6 +296,12 @@ function buildListItem (data, tabIndex) {
 	listItem.tabid = tabID;
 	listItem.windowId = data.windowId;
 
+	// ARIA attributes - Phase 4 Accessibility
+	listItem.setAttribute('role', 'option');
+	listItem.setAttribute('aria-selected', 'false');
+	listItem.setAttribute('id', `tab-option-${tabID}`);
+	listItem.setAttribute('aria-describedby', `tab-${tabID}-description`);
+
 	// Create favicon image safely
 	const favicon = document.createElement("img");
 	favicon.classList.add("mr-2");
@@ -349,6 +358,13 @@ function buildListItem (data, tabIndex) {
 					listItem.classList.toggle("selected");
 					listItem.classList.toggle("bg-blue-100");
 
+					// Update ARIA selection state - Phase 4 Accessibility
+					updateAriaSelected();
+
+					// Announce selection change - Phase 4 Accessibility
+					const selectedCount = document.querySelectorAll('.tab-content.active .list-item.selected').length;
+					announceToScreenReader(`${selectedCount} tab${selectedCount !== 1 ? 's' : ''} selected`);
+
 					// Update focus and index for continued keyboard navigation
 					focusAndUpdateIndex(listItem, clickedIndex, items);
 					lastClickedIndex = clickedIndex;
@@ -375,6 +391,9 @@ function buildListItem (data, tabIndex) {
 						}
 					}
 
+					// Update ARIA selection state - Phase 4 Accessibility
+					updateAriaSelected();
+
 					// Update focus and index for continued keyboard navigation
 					focusAndUpdateIndex(listItem, clickedIndex, items);
 					lastClickedIndex = clickedIndex;
@@ -387,7 +406,57 @@ function buildListItem (data, tabIndex) {
 		})(data)
 	);
 
+	// Create hidden description for screen readers - Phase 4 Accessibility
+	const description = document.createElement('div');
+	description.id = `tab-${tabID}-description`;
+	description.className = 'sr-only';
+	description.textContent = `Tab in window ${data.windowId}. ${data.url || ''}`;
+	listItem.appendChild(description);
+
 	return listItem;
+}
+
+// ARIA helper functions - Phase 4 Accessibility
+
+// Update aria-activedescendant when focus changes
+function updateActiveDescendant(focusedItem) {
+	if (!focusedItem) return;
+	const listbox = focusedItem.closest('[role="listbox"]');
+	if (listbox) {
+		listbox.setAttribute('aria-activedescendant', focusedItem.id || '');
+	}
+}
+
+// Update aria-selected for multi-selection
+function updateAriaSelected() {
+	const activeTabContent = document.querySelector('.tab-content.active');
+	const items = activeTabContent.querySelectorAll('.list-item');
+
+	items.forEach(item => {
+		const isSelected = item.classList.contains('selected');
+		item.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+	});
+}
+
+// Update tab states
+function updateTabAriaStates(activeTabIndex) {
+	const tabs = document.querySelectorAll('[role="tab"]');
+	tabs.forEach((tab, index) => {
+		tab.setAttribute('aria-selected', index === activeTabIndex ? 'true' : 'false');
+		tab.setAttribute('tabindex', index === activeTabIndex ? '0' : '-1');
+	});
+}
+
+// Live region announcements
+function announceToScreenReader(message) {
+	const announceElement = document.getElementById('sr-announcements');
+	if (announceElement) {
+		announceElement.textContent = message;
+		// Clear after 1 second to avoid clutter
+		setTimeout(() => {
+			announceElement.textContent = '';
+		}, 1000);
+	}
 }
 
 function removeItemFromLists (tabID) {
@@ -750,6 +819,9 @@ function handleKeyDown (e) {
 		items[currentItemIndex].classList.contains("bg-blue-100")
 			? items[currentItemIndex].classList.remove("bg-blue-100")
 			: items[currentItemIndex].classList.add("bg-blue-100");
+
+		// Update ARIA selection state - Phase 4 Accessibility
+		updateAriaSelected();
 		break;
 	case "Delete":
 		selectedItems = activeTabContent.querySelectorAll(".list-item.selected");
@@ -815,6 +887,10 @@ function handleKeyDown (e) {
 				selectedItems.forEach(item => {
 					item.classList.remove("selected", "bg-blue-100");
 				});
+
+				// Update ARIA selection state - Phase 4 Accessibility
+				updateAriaSelected();
+
 				e.preventDefault();
 			} else {
 				// Escape in list with no selections: Move focus to search input
@@ -840,6 +916,13 @@ function handleKeyDown (e) {
 				visibleItems.forEach(item => {
 					item.classList.add("selected", "bg-blue-100");
 				});
+
+				// Update ARIA selection state - Phase 4 Accessibility
+				updateAriaSelected();
+
+				// Announce selection change - Phase 4 Accessibility
+				const selectedCount = document.querySelectorAll('.tab-content.active .list-item.selected').length;
+				announceToScreenReader(`Selected all ${selectedCount} visible tabs`);
 			}
 		}
 		break;
@@ -999,6 +1082,14 @@ function init () {
 			} else {
 				updateCounterText();
 			}
+
+			// Update ARIA tab states - Phase 4 Accessibility
+			const currentTabIndex = [...tabs].indexOf(tab);
+			updateTabAriaStates(currentTabIndex);
+
+			// Announce tab switch to screen readers - Phase 4 Accessibility
+			const tabName = tab.textContent.includes('Current') ? 'Current Window' : 'All Windows';
+			announceToScreenReader(`Switched to ${tabName} view`);
 
 			// Restore focus to equivalent relative position in new tab view
 			const newItems = [...target.querySelectorAll('.list-item')];

@@ -66,9 +66,38 @@ body {
 /* .list-item.selected {
       background-color: #e2e8f0;
     } */
+/* Enhanced focus indicators - Phase 3 Visual Feedback */
 .list-item:focus {
-  border-color: blue;
-  outline: none;
+  outline: 2px solid #3182ce;
+  outline-offset: -2px;
+  background-color: rgba(59, 130, 246, 0.05);
+  border-color: #3182ce;
+  box-shadow: 0 0 0 1px #3182ce inset;
+}
+
+/* High contrast support for focus indicators */
+@media (prefers-contrast: high) {
+  .list-item:focus {
+    outline: 3px solid #000;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-color: #000;
+    box-shadow: 0 0 0 2px #000 inset;
+  }
+}
+
+/* Tab button focus indicators */
+.tab-button:focus {
+  outline: 2px solid #3182ce;
+  outline-offset: -2px;
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* Search input focus indicators */
+.search-bar:focus {
+  outline: 2px solid #3182ce;
+  outline-offset: -2px;
+  border-color: #3182ce !important;
+  box-shadow: 0 0 0 1px #3182ce;
 }
 
 .list-item .remove-btn {
@@ -110,6 +139,41 @@ body {
   visibility: hidden;
 }
 
+/* Enhanced selection state polish - Phase 3 Visual Feedback */
+.list-item.selected {
+  background-color: #dbeafe !important; /* Lighter blue than focus */
+  border-left: 4px solid #3182ce !important;
+  position: relative;
+}
+
+/* Selection checkmark indicator */
+.list-item.selected::after {
+  content: "✓";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #059669;
+  font-weight: bold;
+  font-size: 14px;
+  z-index: 1;
+}
+
+/* Ensure checkmark doesn't overlap with remove button */
+.list-item.selected:hover .remove-btn {
+  right: 28px; /* Move remove button left when checkmark is present */
+}
+
+/* Clear visual differentiation: Selection vs Focus vs Selected+Focused */
+.list-item.selected:focus {
+  /* When both selected and focused - combine indicators */
+  background-color: #bfdbfe !important; /* Slightly darker when both states active */
+  border-left: 4px solid #1d4ed8 !important; /* Darker blue border */
+  outline: 2px solid #1d4ed8;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 1px #1d4ed8 inset;
+}
+
 /* Multi-select warning state styling */
 .search-bar.warning-state {
   border-color: #f56565 !important;
@@ -120,4 +184,17 @@ body {
 .search-bar.warning-state::placeholder {
   color: #c53030 !important;
   font-weight: 500;
+}
+
+/* Screen reader only content - Phase 4 Accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
