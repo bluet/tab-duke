@@ -725,89 +725,107 @@ function handleKeyDown (e) {
 		}
 		break;
 	case "PageUp":
-		if (e.ctrlKey) {
-			// Ctrl+PageUp: Fast scroll up ~10 items in current list
-			e.preventDefault();
-			const visibleItems = findVisibleItems(items);
-			if (visibleItems.length > 0) {
-				const currentVisibleIndex = visibleItems.findIndex(item => item === items[currentItemIndex]);
-				const targetIndex = Math.max(0, currentVisibleIndex - 10);
-				const targetItem = visibleItems[targetIndex];
-				const actualIndex = items.indexOf(targetItem);
-				focusAndUpdateIndex(targetItem, actualIndex, items);
-			}
-		} else {
-			// Always switch to "Current Window" tab
-			e.preventDefault();
-			if (currentTabIndex !== 0) {
-				// Save current focus position before switching
-				saveCurrentFocusPosition(items);
-				tabs[0].click(); // Current Window tab
-
-				// Restore focus for keyboard-initiated tab switch
-				const target = document.querySelector(tabs[0].dataset.tabTarget);
-				const newItems = [...target.querySelectorAll('.list-item')];
-				if (newItems.length > 0) {
-					restoreFocusAfterTabSwitch(newItems);
-				}
-			}
+		// PageUp: Fast scroll up ~10 items in current list
+		e.preventDefault();
+		const visibleItemsUp = findVisibleItems(items);
+		if (visibleItemsUp.length > 0) {
+			const currentVisibleIndex = visibleItemsUp.findIndex(item => item === items[currentItemIndex]);
+			const targetIndex = Math.max(0, currentVisibleIndex - 10);
+			const targetItem = visibleItemsUp[targetIndex];
+			const actualIndex = items.indexOf(targetItem);
+			focusAndUpdateIndex(targetItem, actualIndex, items);
 		}
 		break;
 	case "PageDown":
-		if (e.ctrlKey) {
-			// Ctrl+PageDown: Fast scroll down ~10 items in current list
-			e.preventDefault();
-			const visibleItems = findVisibleItems(items);
-			if (visibleItems.length > 0) {
-				const currentVisibleIndex = visibleItems.findIndex(item => item === items[currentItemIndex]);
-				const targetIndex = Math.min(visibleItems.length - 1, currentVisibleIndex + 10);
-				const targetItem = visibleItems[targetIndex];
-				const actualIndex = items.indexOf(targetItem);
-				focusAndUpdateIndex(targetItem, actualIndex, items);
-			}
-		} else {
-			// Always switch to "All Windows" tab
-			e.preventDefault();
-			if (currentTabIndex !== 1) {
-				// Save current focus position before switching
-				saveCurrentFocusPosition(items);
-				tabs[1].click(); // All Windows tab
-
-				// Restore focus for keyboard-initiated tab switch
-				const target = document.querySelector(tabs[1].dataset.tabTarget);
-				const newItems = [...target.querySelectorAll('.list-item')];
-				if (newItems.length > 0) {
-					restoreFocusAfterTabSwitch(newItems);
-				}
-			}
+		// PageDown: Fast scroll down ~10 items in current list
+		e.preventDefault();
+		const visibleItemsDown = findVisibleItems(items);
+		if (visibleItemsDown.length > 0) {
+			const currentVisibleIndex = visibleItemsDown.findIndex(item => item === items[currentItemIndex]);
+			const targetIndex = Math.min(visibleItemsDown.length - 1, currentVisibleIndex + 10);
+			const targetItem = visibleItemsDown[targetIndex];
+			const actualIndex = items.indexOf(targetItem);
+			focusAndUpdateIndex(targetItem, actualIndex, items);
 		}
 		break;
 	case "ArrowLeft":
-		newTabIndex = (currentTabIndex - 1 + tabs.length) % tabs.length;
-		saveCurrentFocusPosition(items);
-		tabs[newTabIndex].click();
+		if (e.ctrlKey || e.metaKey) {
+			// Ctrl+ArrowLeft: Switch to previous tab
+			e.preventDefault();
+			newTabIndex = (currentTabIndex - 1 + tabs.length) % tabs.length;
+			saveCurrentFocusPosition(items);
+			tabs[newTabIndex].click();
 
-		// Restore focus for keyboard-initiated tab switch
-		const leftTarget = document.querySelector(tabs[newTabIndex].dataset.tabTarget);
-		const leftNewItems = [...leftTarget.querySelectorAll('.list-item')];
-		if (leftNewItems.length > 0) {
-			restoreFocusAfterTabSwitch(leftNewItems);
+			// Restore focus for keyboard-initiated tab switch
+			const leftTarget = document.querySelector(tabs[newTabIndex].dataset.tabTarget);
+			const leftNewItems = [...leftTarget.querySelectorAll('.list-item')];
+			if (leftNewItems.length > 0) {
+				restoreFocusAfterTabSwitch(leftNewItems);
+			}
+		} else if (searchInput !== document.activeElement) {
+			// Plain ArrowLeft in list: Navigate to previous item (horizontal navigation)
+			e.preventDefault();
+			newIndex = (currentItemIndex - 1 + items.length) % items.length;
+			focusAndUpdateIndex(items[newIndex], newIndex, items, 'instant', true);
 		}
+		// In search input: allow browser default (cursor movement)
 		break;
 	case "ArrowRight":
-		newTabIndex = (currentTabIndex + 1) % tabs.length;
-		saveCurrentFocusPosition(items);
-		tabs[newTabIndex].click();
+		if (e.ctrlKey || e.metaKey) {
+			// Ctrl+ArrowRight: Switch to next tab
+			e.preventDefault();
+			newTabIndex = (currentTabIndex + 1) % tabs.length;
+			saveCurrentFocusPosition(items);
+			tabs[newTabIndex].click();
 
-		// Restore focus for keyboard-initiated tab switch
-		const rightTarget = document.querySelector(tabs[newTabIndex].dataset.tabTarget);
-		const rightNewItems = [...rightTarget.querySelectorAll('.list-item')];
-		if (rightNewItems.length > 0) {
-			restoreFocusAfterTabSwitch(rightNewItems);
+			// Restore focus for keyboard-initiated tab switch
+			const rightTarget = document.querySelector(tabs[newTabIndex].dataset.tabTarget);
+			const rightNewItems = [...rightTarget.querySelectorAll('.list-item')];
+			if (rightNewItems.length > 0) {
+				restoreFocusAfterTabSwitch(rightNewItems);
+			}
+		} else if (searchInput !== document.activeElement) {
+			// Plain ArrowRight in list: Navigate to next item (horizontal navigation)
+			e.preventDefault();
+			newIndex = (currentItemIndex + 1) % items.length;
+			focusAndUpdateIndex(items[newIndex], newIndex, items, 'instant', true);
 		}
+		// In search input: allow browser default (cursor movement)
 		break;
 	case "ArrowUp":
-		if (searchInput === document.activeElement) {
+		if (e.altKey && currentTabIndex === 1 && searchInput !== document.activeElement) {
+			// Alt+ArrowUp: Navigate to previous window section (All Windows tab only)
+			e.preventDefault();
+			const allWindowContent = document.getElementById("allWindow");
+			const windowDivs = [...allWindowContent.querySelectorAll(".window")].filter(w => w.style.display !== "none");
+
+			if (windowDivs.length > 1) {
+				// Find current window section
+				const currentItem = items[currentItemIndex];
+				const currentWindowDiv = currentItem.closest('.window');
+				const currentWindowIndex = windowDivs.indexOf(currentWindowDiv);
+
+				if (currentWindowIndex > 0) {
+					// Go to previous window section
+					const targetWindowDiv = windowDivs[currentWindowIndex - 1];
+					const targetItems = [...targetWindowDiv.querySelectorAll('.list-item')].filter(item => item.style.display !== 'none');
+
+					if (targetItems.length > 0) {
+						const targetIndex = items.indexOf(targetItems[0]);
+						focusAndUpdateIndex(targetItems[0], targetIndex, items, 'smooth');
+					}
+				} else {
+					// Wrap to last window section
+					const targetWindowDiv = windowDivs[windowDivs.length - 1];
+					const targetItems = [...targetWindowDiv.querySelectorAll('.list-item')].filter(item => item.style.display !== 'none');
+
+					if (targetItems.length > 0) {
+						const targetIndex = items.indexOf(targetItems[0]);
+						focusAndUpdateIndex(targetItems[0], targetIndex, items, 'smooth');
+					}
+				}
+			}
+		} else if (searchInput === document.activeElement) {
 			// Go to last visible item with smooth scroll for major orientation change
 			const lastVisible = findLastVisibleItem(items);
 			if (lastVisible) {
@@ -820,7 +838,39 @@ function handleKeyDown (e) {
 		}
 		break;
 	case "ArrowDown":
-		if (searchInput === document.activeElement) {
+		if (e.altKey && currentTabIndex === 1 && searchInput !== document.activeElement) {
+			// Alt+ArrowDown: Navigate to next window section (All Windows tab only)
+			e.preventDefault();
+			const allWindowContent = document.getElementById("allWindow");
+			const windowDivs = [...allWindowContent.querySelectorAll(".window")].filter(w => w.style.display !== "none");
+
+			if (windowDivs.length > 1) {
+				// Find current window section
+				const currentItem = items[currentItemIndex];
+				const currentWindowDiv = currentItem.closest('.window');
+				const currentWindowIndex = windowDivs.indexOf(currentWindowDiv);
+
+				if (currentWindowIndex < windowDivs.length - 1) {
+					// Go to next window section
+					const targetWindowDiv = windowDivs[currentWindowIndex + 1];
+					const targetItems = [...targetWindowDiv.querySelectorAll('.list-item')].filter(item => item.style.display !== 'none');
+
+					if (targetItems.length > 0) {
+						const targetIndex = items.indexOf(targetItems[0]);
+						focusAndUpdateIndex(targetItems[0], targetIndex, items, 'smooth');
+					}
+				} else {
+					// Wrap to first window section
+					const targetWindowDiv = windowDivs[0];
+					const targetItems = [...targetWindowDiv.querySelectorAll('.list-item')].filter(item => item.style.display !== 'none');
+
+					if (targetItems.length > 0) {
+						const targetIndex = items.indexOf(targetItems[0]);
+						focusAndUpdateIndex(targetItems[0], targetIndex, items, 'smooth');
+					}
+				}
+			}
+		} else if (searchInput === document.activeElement) {
 			// Go to first visible item with smooth scroll for major orientation change
 			const firstVisible = findFirstVisibleItem(items);
 			if (firstVisible) {
