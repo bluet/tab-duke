@@ -120,8 +120,24 @@ body {
   text-overflow: ellipsis;
 }
 
+/* Enhanced current active tab/page indicator */
 .tab-active {
-  border-left: 5px solid #3182ce;
+  border-left: 5px solid #059669 !important; /* Green left border for "current" */
+  background-color: rgba(16, 185, 129, 0.1) !important; /* Subtle green background */
+  position: relative;
+}
+
+/* Add "CURRENT" label for extra clarity */
+.tab-active::before {
+  content: "● CURRENT";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #059669;
+  font-weight: bold;
+  font-size: 10px;
+  z-index: 2;
 }
 
 /* Favicon styling - ensure consistent size even when broken */

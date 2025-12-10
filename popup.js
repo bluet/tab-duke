@@ -147,7 +147,15 @@ function restoreFocusAfterTabSwitch(newItems) {
 		return true;
 	}
 
-	// Final fallback to first visible if calculated position is hidden
+	// BETTER FALLBACK: Look for current active tab first, then first visible
+	const currentActiveItem = newItems.find(item => item.classList.contains('tab-active'));
+	if (currentActiveItem) {
+		const activeIndex = newItems.indexOf(currentActiveItem);
+		focusAndUpdateIndex(currentActiveItem, activeIndex, newItems);
+		return true;
+	}
+
+	// Final fallback to first visible if no current active tab found
 	const firstVisible = findFirstVisibleItem(newItems);
 	if (firstVisible) {
 		focusAndUpdateIndex(firstVisible.item, firstVisible.index, newItems);
@@ -735,6 +743,13 @@ function handleKeyDown (e) {
 				// Save current focus position before switching
 				saveCurrentFocusPosition(items);
 				tabs[0].click(); // Current Window tab
+
+				// Restore focus for keyboard-initiated tab switch
+				const target = document.querySelector(tabs[0].dataset.tabTarget);
+				const newItems = [...target.querySelectorAll('.list-item')];
+				if (newItems.length > 0) {
+					restoreFocusAfterTabSwitch(newItems);
+				}
 			}
 		}
 		break;
@@ -757,6 +772,13 @@ function handleKeyDown (e) {
 				// Save current focus position before switching
 				saveCurrentFocusPosition(items);
 				tabs[1].click(); // All Windows tab
+
+				// Restore focus for keyboard-initiated tab switch
+				const target = document.querySelector(tabs[1].dataset.tabTarget);
+				const newItems = [...target.querySelectorAll('.list-item')];
+				if (newItems.length > 0) {
+					restoreFocusAfterTabSwitch(newItems);
+				}
 			}
 		}
 		break;
@@ -764,11 +786,25 @@ function handleKeyDown (e) {
 		newTabIndex = (currentTabIndex - 1 + tabs.length) % tabs.length;
 		saveCurrentFocusPosition(items);
 		tabs[newTabIndex].click();
+
+		// Restore focus for keyboard-initiated tab switch
+		const leftTarget = document.querySelector(tabs[newTabIndex].dataset.tabTarget);
+		const leftNewItems = [...leftTarget.querySelectorAll('.list-item')];
+		if (leftNewItems.length > 0) {
+			restoreFocusAfterTabSwitch(leftNewItems);
+		}
 		break;
 	case "ArrowRight":
 		newTabIndex = (currentTabIndex + 1) % tabs.length;
 		saveCurrentFocusPosition(items);
 		tabs[newTabIndex].click();
+
+		// Restore focus for keyboard-initiated tab switch
+		const rightTarget = document.querySelector(tabs[newTabIndex].dataset.tabTarget);
+		const rightNewItems = [...rightTarget.querySelectorAll('.list-item')];
+		if (rightNewItems.length > 0) {
+			restoreFocusAfterTabSwitch(rightNewItems);
+		}
 		break;
 	case "ArrowUp":
 		if (searchInput === document.activeElement) {
@@ -923,6 +959,54 @@ function handleKeyDown (e) {
 				// Announce selection change - Phase 4 Accessibility
 				const selectedCount = document.querySelectorAll('.tab-content.active .list-item.selected').length;
 				announceToScreenReader(`Selected all ${selectedCount} visible tabs`);
+			}
+		}
+		break;
+	case 'g':
+	case 'G':
+		if (e.ctrlKey || e.metaKey) {
+			// Ctrl+G: Jump to currently active tab/page (search across all tab views)
+			e.preventDefault();
+
+			// Look for current active tab across all tab contents
+			const allTabContents = document.querySelectorAll('.tab-content');
+			let targetTabContent = null;
+			let currentActiveItem = null;
+
+			for (const tabContent of allTabContents) {
+				const activeItem = tabContent.querySelector('.list-item.tab-active');
+				if (activeItem) {
+					targetTabContent = tabContent;
+					currentActiveItem = activeItem;
+					break;
+				}
+			}
+
+			if (currentActiveItem && targetTabContent) {
+				// If current active tab is in a different view, switch to that view first
+				const currentlyActiveTabContent = document.querySelector('.tab-content.active');
+				if (targetTabContent !== currentlyActiveTabContent) {
+					// Find and click the corresponding tab header
+					const targetTabId = targetTabContent.id;
+					const targetTab = document.querySelector(`[data-tab-target="#${targetTabId}"]`);
+					if (targetTab) {
+						targetTab.click();
+						// Wait briefly for tab switch to complete, then focus
+						setTimeout(() => {
+							const items = [...targetTabContent.querySelectorAll('.list-item')];
+							const activeIndex = items.indexOf(currentActiveItem);
+							focusAndUpdateIndex(currentActiveItem, activeIndex, items, 'smooth');
+						}, 50);
+					}
+				} else {
+					// Already in correct view, focus directly
+					const items = [...targetTabContent.querySelectorAll('.list-item')];
+					const activeIndex = items.indexOf(currentActiveItem);
+					focusAndUpdateIndex(currentActiveItem, activeIndex, items, 'smooth');
+				}
+
+				// Announce to screen reader
+				announceToScreenReader('Jumped to currently active tab');
 			}
 		}
 		break;
@@ -1091,11 +1175,9 @@ function init () {
 			const tabName = tab.textContent.includes('Current') ? 'Current Window' : 'All Windows';
 			announceToScreenReader(`Switched to ${tabName} view`);
 
-			// Restore focus to equivalent relative position in new tab view
-			const newItems = [...target.querySelectorAll('.list-item')];
-			if (newItems.length > 0) {
-				restoreFocusAfterTabSwitch(newItems);
-			}
+			// Do NOT restore focus for mouse clicks - user clicked intentionally
+			// Focus restoration only happens for keyboard-initiated tab switches
+			// (PageUp/PageDown, Arrow keys call tabs[x].click() and need focus restoration)
 		});
 	});
 
