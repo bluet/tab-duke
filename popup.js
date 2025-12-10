@@ -3,6 +3,161 @@ const tabContents = document.querySelectorAll(".tab-content");
 const searchInput = document.getElementById("searchInput");
 let currentItemIndex = 0;
 
+// Focus restoration system - separate tracking per tab
+let focusRestoreData = {
+	currentTab: {
+		lastFocusedIndex: -1, // -1 means no previous focus data
+		relativePosition: 0
+	},
+	allTab: {
+		lastFocusedIndex: -1, // -1 means no previous focus data
+		relativePosition: 0
+	},
+	activeTabName: 'currentTab' // 'currentTab' or 'allTab'
+};
+
+// Smart scrolling utility functions - tiered approach
+function focusWithSmartScroll(item, transition = 'instant') {
+	item.focus();
+	item.scrollIntoView({
+		block: 'nearest',    // Only scroll if not fully visible
+		behavior: transition
+	});
+}
+
+function focusWithSmoothScroll(item) {
+	focusWithSmartScroll(item, 'smooth');
+}
+
+function focusWithInstantScroll(item) {
+	focusWithSmartScroll(item, 'instant');
+}
+
+// Helper function to eliminate repeated focus+update pattern
+function focusAndUpdateIndex(item, index, items, scrollMode = 'instant', saveFocus = false) {
+	if (scrollMode === 'smooth') {
+		focusWithSmoothScroll(item);
+	} else {
+		focusWithInstantScroll(item);
+	}
+	currentItemIndex = index;
+	updateRovingTabindex(items, index);
+
+	if (saveFocus) {
+		saveCurrentFocusPosition(items);
+	}
+}
+
+// Focus restoration functions
+function calculateRelativePosition(currentIndex, totalItems) {
+	return totalItems > 0 ? currentIndex / totalItems : 0;
+}
+
+function getCurrentTabData() {
+	return focusRestoreData[focusRestoreData.activeTabName];
+}
+
+function saveCurrentFocusPosition(items) {
+	const tabData = getCurrentTabData();
+	tabData.lastFocusedIndex = currentItemIndex;
+	tabData.relativePosition = calculateRelativePosition(currentItemIndex, items.length);
+}
+
+function updateActiveTabName() {
+	const currentTabIndex = [...tabs].findIndex(tab => tab.classList.contains("active"));
+	focusRestoreData.activeTabName = (currentTabIndex === 0) ? 'currentTab' : 'allTab';
+}
+
+function setCurrentItemIndexToActiveTab(currentTabId) {
+	// Set currentItemIndex to the position of the currently active browser tab
+	const activeTabContent = document.querySelector(".tab-content.active");
+	const items = activeTabContent.querySelectorAll(".list-item");
+
+	items.forEach((item, index) => {
+		if (item.tabid === currentTabId) {
+			currentItemIndex = index;
+			return;
+		}
+	});
+}
+
+function initializeFocusToCurrentTabData(currentTabId) {
+	// Find the currently active tab in both tab views and set initial focus data
+	const currentWindowItems = [...document.getElementById("currentWindow").querySelectorAll('.list-item')];
+	const allWindowItems = [...document.getElementById("allWindow").querySelectorAll('.list-item')];
+
+	// Set focus data for Current tab view
+	const currentTabIndex = currentWindowItems.findIndex(item => item.tabid === currentTabId);
+	if (currentTabIndex >= 0) {
+		focusRestoreData.currentTab.lastFocusedIndex = currentTabIndex;
+		focusRestoreData.currentTab.relativePosition = calculateRelativePosition(currentTabIndex, currentWindowItems.length);
+	}
+
+	// Set focus data for All tab view
+	const allTabIndex = allWindowItems.findIndex(item => item.tabid === currentTabId);
+	if (allTabIndex >= 0) {
+		focusRestoreData.allTab.lastFocusedIndex = allTabIndex;
+		focusRestoreData.allTab.relativePosition = calculateRelativePosition(allTabIndex, allWindowItems.length);
+	}
+
+	// Set currentItemIndex for the currently visible tab view
+	updateActiveTabName();
+	if (focusRestoreData.activeTabName === 'currentTab' && currentTabIndex >= 0) {
+		currentItemIndex = currentTabIndex;
+	} else if (focusRestoreData.activeTabName === 'allTab' && allTabIndex >= 0) {
+		currentItemIndex = allTabIndex;
+	}
+}
+
+function restoreFocusAfterTabSwitch(newItems) {
+	updateActiveTabName(); // Update which tab is now active
+	const tabData = getCurrentTabData();
+
+	// Try to restore to the exact same index first (only if we have valid previous data)
+	if (tabData.lastFocusedIndex >= 0 && tabData.lastFocusedIndex < newItems.length && newItems[tabData.lastFocusedIndex]) {
+		const targetItem = newItems[tabData.lastFocusedIndex];
+		if (targetItem.style.display !== 'none') {
+			focusAndUpdateIndex(targetItem, tabData.lastFocusedIndex, newItems);
+			return true;
+		}
+	}
+
+	// Fallback to relative position if exact index doesn't work
+	const targetIndex = Math.floor(tabData.relativePosition * newItems.length);
+	const clampedIndex = Math.min(targetIndex, newItems.length - 1);
+	const targetItem = newItems[clampedIndex];
+
+	if (targetItem.style.display !== 'none') {
+		focusAndUpdateIndex(targetItem, clampedIndex, newItems);
+		return true;
+	}
+
+	// Final fallback to first visible if calculated position is hidden
+	const firstVisible = findFirstVisibleItem(newItems);
+	if (firstVisible) {
+		focusAndUpdateIndex(firstVisible.item, firstVisible.index, newItems);
+		return true;
+	}
+
+	return false;
+}
+
+function restoreFocusAfterSearchClear() {
+	const items = [...document.querySelector('.tab-content.active').querySelectorAll('.list-item')];
+	const targetIndex = Math.min(focusRestoreData.lastSearchFocusedIndex, items.length - 1);
+
+	if (items[targetIndex]) {
+		focusAndUpdateIndex(items[targetIndex], targetIndex, items, 'smooth');
+	}
+}
+
+// Roving tabindex management - only focused item should be tabbable
+function updateRovingTabindex(items, focusedIndex) {
+	items.forEach((item, index) => {
+		item.tabIndex = (index === focusedIndex) ? 0 : -1;
+	});
+}
+
 // function addItems (tabContent, items, prefix) {
 // 	const windowMap = new Map();
 
@@ -122,7 +277,7 @@ function buildListItem (data, tabIndex) {
 	if (data.active) {
 		listItem.classList.add("tab-active");
 	}
-	listItem.tabIndex = tabIndex;
+	listItem.tabIndex = -1; // Roving tabindex: only focused item has tabIndex="0"
 	listItem.tabid = tabID;
 	listItem.windowId = data.windowId;
 
@@ -405,48 +560,137 @@ function handleKeyDown (e) {
 	}
 
 	switch (e.key) {
+	case "Tab":
+		if (e.shiftKey) {
+			// Shift+Tab: List → Search
+			if (searchInput !== document.activeElement) {
+				e.preventDefault();
+				searchInput.focus();
+			}
+			// From search: allow browser default (exit popup) - no preventDefault
+		} else {
+			// Tab: Search → List, restore previous focus position
+			if (searchInput === document.activeElement) {
+				e.preventDefault();
+				updateActiveTabName();
+				const tabData = getCurrentTabData();
+
+				// Use previous position if available, otherwise use currentItemIndex (active browser tab)
+				const targetIndex = (tabData.lastFocusedIndex >= 0) ? tabData.lastFocusedIndex : currentItemIndex;
+
+				if (targetIndex >= 0 && targetIndex < items.length && items[targetIndex]?.style.display !== 'none') {
+					focusAndUpdateIndex(items[targetIndex], targetIndex, items, 'smooth');
+				} else {
+					// Fallback if target is filtered out
+					const firstVisible = findFirstVisibleItem(items);
+					if (firstVisible) {
+						focusAndUpdateIndex(firstVisible.item, firstVisible.index, items, 'smooth');
+					}
+				}
+			}
+			// From list items: Tab should stay in popup, cycle back to search
+			else {
+				e.preventDefault();
+				searchInput.focus();
+			}
+		}
+		break;
+	case "PageUp":
+		if (e.ctrlKey) {
+			// Ctrl+PageUp: Fast scroll up ~10 items in current list
+			e.preventDefault();
+			const visibleItems = findVisibleItems(items);
+			if (visibleItems.length > 0) {
+				const currentVisibleIndex = visibleItems.findIndex(item => item === items[currentItemIndex]);
+				const targetIndex = Math.max(0, currentVisibleIndex - 10);
+				const targetItem = visibleItems[targetIndex];
+				const actualIndex = items.indexOf(targetItem);
+				focusAndUpdateIndex(targetItem, actualIndex, items);
+			}
+		} else {
+			// Always switch to "Current Window" tab
+			e.preventDefault();
+			if (currentTabIndex !== 0) {
+				// Save current focus position before switching
+				saveCurrentFocusPosition(items);
+				tabs[0].click(); // Current Window tab
+			}
+		}
+		break;
+	case "PageDown":
+		if (e.ctrlKey) {
+			// Ctrl+PageDown: Fast scroll down ~10 items in current list
+			e.preventDefault();
+			const visibleItems = findVisibleItems(items);
+			if (visibleItems.length > 0) {
+				const currentVisibleIndex = visibleItems.findIndex(item => item === items[currentItemIndex]);
+				const targetIndex = Math.min(visibleItems.length - 1, currentVisibleIndex + 10);
+				const targetItem = visibleItems[targetIndex];
+				const actualIndex = items.indexOf(targetItem);
+				focusAndUpdateIndex(targetItem, actualIndex, items);
+			}
+		} else {
+			// Always switch to "All Windows" tab
+			e.preventDefault();
+			if (currentTabIndex !== 1) {
+				// Save current focus position before switching
+				saveCurrentFocusPosition(items);
+				tabs[1].click(); // All Windows tab
+			}
+		}
+		break;
 	case "ArrowLeft":
 		newTabIndex = (currentTabIndex - 1 + tabs.length) % tabs.length;
+		saveCurrentFocusPosition(items);
 		tabs[newTabIndex].click();
 		break;
 	case "ArrowRight":
 		newTabIndex = (currentTabIndex + 1) % tabs.length;
+		saveCurrentFocusPosition(items);
 		tabs[newTabIndex].click();
 		break;
 	case "ArrowUp":
 		if (searchInput === document.activeElement) {
-			// Go to last visible item, stay in search if none visible
+			// Go to last visible item with smooth scroll for major orientation change
 			const lastVisible = findLastVisibleItem(items);
 			if (lastVisible) {
-				lastVisible.item.focus();
-				currentItemIndex = lastVisible.index;
+				focusAndUpdateIndex(lastVisible.item, lastVisible.index, items, 'smooth');
 			}
 		} else {
+			// Rapid navigation within list - use instant scroll
 			newIndex = (currentItemIndex - 1 + items.length) % items.length;
-			items[newIndex].focus();
-			currentItemIndex = newIndex;
+			focusAndUpdateIndex(items[newIndex], newIndex, items, 'instant', true);
 		}
 		break;
 	case "ArrowDown":
 		if (searchInput === document.activeElement) {
-			// Go to first visible item, stay in search if none visible
+			// Go to first visible item with smooth scroll for major orientation change
 			const firstVisible = findFirstVisibleItem(items);
 			if (firstVisible) {
-				firstVisible.item.focus();
-				currentItemIndex = firstVisible.index;
+				focusAndUpdateIndex(firstVisible.item, firstVisible.index, items, 'smooth');
 			}
 		} else {
+			// Rapid navigation within list - use instant scroll
 			newIndex = (currentItemIndex + 1) % items.length;
-			items[newIndex].focus();
-			currentItemIndex = newIndex;
+			focusAndUpdateIndex(items[newIndex], newIndex, items, 'instant', true);
 		}
 		break;
-		// case 'Home':
-		//   searchInput.focus();
-		//   break;
+	case 'Home':
+		// Context-aware Home key behavior
+		if (searchInput === document.activeElement) {
+			// In search: allow browser default (cursor to start)
+			return;
+		} else {
+			// In list: focus first visible item with smooth scroll
+			e.preventDefault();
+			const firstVisible = findFirstVisibleItem(items);
+			if (firstVisible) {
+				focusAndUpdateIndex(firstVisible.item, firstVisible.index, items, 'smooth', true);
+			}
+		}
+		break;
 	case "End":
-		items[items.length - 1].focus();
-		currentItemIndex = items.length - 1;
+		focusAndUpdateIndex(items[items.length - 1], items.length - 1, items, 'instant', true);
 		break;
 	case " ":
 		e.preventDefault();
@@ -468,24 +712,41 @@ function handleKeyDown (e) {
 		if (searchInput === document.activeElement) {
 			const firstVisible = findFirstVisibleItem(items);
 			if (firstVisible) {
-				firstVisible.item.focus();
-				currentItemIndex = firstVisible.index;
+				focusAndUpdateIndex(firstVisible.item, firstVisible.index, items, 'smooth');
 			}
 		} else {
 			goToOpenedTab(items[currentItemIndex].tabid, items[currentItemIndex].windowId);
 		}
 		break;
 	case "Escape":
-		// If the search input is focused, clear the search input and focus the current item
+		// Context-aware Escape behavior
 		if (searchInput === document.activeElement && searchInput.value !== "") {
+			// Escape in search with text: Clear text, stay in search
 			searchInput.value = "";
 			handleSearchInput();
 			e.preventDefault();
 		} else if (searchInput === document.activeElement) {
-			items[currentItemIndex].focus();
-			handleSearchInput();
-			e.preventDefault();
+			// Escape in empty search: Allow popup to close (browser default)
+			// Don't preventDefault - let browser handle popup close
+			return;
+		} else {
+			// In list: check for selections
+			selectedItems = activeTabContent.querySelectorAll(".list-item.selected");
+			if (selectedItems.length > 0) {
+				// Escape in list with selections: Clear all selections, stay focused on current item
+				selectedItems.forEach(item => {
+					item.classList.remove("selected", "bg-blue-100");
+				});
+				e.preventDefault();
+			} else {
+				// Escape in list with no selections: Move focus to search input
+				// Save current list position for potential restoration
+				saveCurrentFocusPosition(items);
+				searchInput.focus();
+				e.preventDefault();
+			}
 		}
+		// Final Escape (no text, no selections) allows popup to close naturally
 		break;
 	default:
 		// if it's a special character, do nothing
@@ -602,6 +863,18 @@ function init () {
 			const currentWindowId = window.id;
 			addItemsToBoth(tabs, currentWindowId);
 			updateCounterText();
+
+			// Initialize focus restoration system AFTER items are in DOM
+			setTimeout(() => {
+				updateActiveTabName(); // Set initial active tab
+				// Find currently active tab from the data we already have
+				const activeTab = tabs.find(tab => tab.active);
+				if (activeTab) {
+					// CRITICAL: Set currentItemIndex to active tab position
+					setCurrentItemIndexToActiveTab(activeTab.id);
+					initializeFocusToCurrentTabData(activeTab.id);
+				}
+			}, 0); // Run on next tick to ensure DOM is updated
 		});
 	});
 
@@ -632,7 +905,11 @@ function init () {
 				updateCounterText();
 			}
 
-			scrollToCurrentItem();
+			// Restore focus to equivalent relative position in new tab view
+			const newItems = [...target.querySelectorAll('.list-item')];
+			if (newItems.length > 0) {
+				restoreFocusAfterTabSwitch(newItems);
+			}
 		});
 	});
 
