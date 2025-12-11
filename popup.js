@@ -5,6 +5,8 @@ let currentItemIndex = 0;
 let lastClickedIndex = -1; // For shift+click range selection
 let multiSelectWarningActive = false; // For multi-select Enter warning
 
+// Removed overcomplicated virtual scrolling - keeping it simple and global
+
 // Focus restoration system - separate tracking per tab
 let focusRestoreData = {
 	currentTab: {
@@ -251,6 +253,7 @@ function addItemsToBoth (items, currentWindowId) {
 	const tabContentAll = document.getElementById("allWindow");
 	const windowMap = new Map();
 
+	// Group items by window (PRESERVE ORIGINAL STRUCTURE)
 	items.forEach((item, tabIndex) => {
 		if (!windowMap.has(item.windowId)) {
 			windowMap.set(item.windowId, []);
@@ -258,39 +261,139 @@ function addItemsToBoth (items, currentWindowId) {
 		windowMap.get(item.windowId).push(item);
 	});
 
-	windowMap.forEach((items, windowID) => {
-		const windowDivAllWindows = document.createElement("div");
-		windowDivAllWindows.windowId = windowID;
-		windowDivAllWindows.classList.add("window");
+	// Always use optimized approach - better performance at all scales
+	addItemsOptimized(windowMap, currentWindowId, tabContentCurrent, tabContentAll);
+
+	// Setup event delegation (always better)
+	setupEventDelegation();
+
+	// Find and focus active tab
+	const activeTab = items.find(item => item.active);
+	if (activeTab) {
+		setTimeout(() => {
+			const activeItem = tabContentCurrent.querySelector('.tab-active') ||
+			                  tabContentAll.querySelector('.tab-active');
+			if (activeItem) {
+				activeItem.focus();
+			}
+		}, 0);
+	}
+}
+
+// FIXED: Proper separation of Current vs All tab content
+function addItemsOptimized(windowMap, currentWindowId, tabContentCurrent, tabContentAll) {
+	// Clear containers
+	tabContentCurrent.textContent = '';
+	tabContentAll.textContent = '';
+
+	// Populate Current tab: Only current window items, NO window headers (flat list)
+	const currentWindowTabs = windowMap.get(currentWindowId) || [];
+	currentWindowTabs.forEach((item, tabIndex) => {
+		const listItem = buildListItem(item, tabIndex);
+		tabContentCurrent.appendChild(listItem);
+	});
+
+	// Populate All tab: ALL windows with window headers and structure
+	windowMap.forEach((windowTabs, windowID) => {
+		const windowDiv = document.createElement("div");
+		windowDiv.windowId = windowID;
+		windowDiv.classList.add("window");
+
 		const windowHeader = document.createElement("h2");
 		windowHeader.textContent = `Window ${windowID}`;
-		windowDivAllWindows.appendChild(windowHeader);
-		const windowDivCurrentWindow = windowDivAllWindows.cloneNode(true);
+		windowDiv.appendChild(windowHeader);
 
-		items.forEach((item, tabIndex) => {
-			const listItemAllWindows = buildListItem(item, tabIndex);
-			const listItemCurrentWindow = buildListItem(item, tabIndex);
-
-			// if this is the current active tab in the current window, focus on it
-			if (item.active) {
-				listItemAllWindows.focus();
-				listItemCurrentWindow.focus();
-			}
-
-			windowDivAllWindows.appendChild(listItemAllWindows);
-			if (windowID === currentWindowId) {
-				windowDivCurrentWindow.appendChild(listItemCurrentWindow);
-			}
+		windowTabs.forEach((item, tabIndex) => {
+			const listItem = buildListItem(item, tabIndex);
+			windowDiv.appendChild(listItem);
 		});
 
-		tabContentAll.appendChild(windowDivAllWindows);
-		// console.log("windowId: ", windowId);
-		// console.log("chrome.windows.WINDOW_ID_CURRENT: ", chrome.windows.WINDOW_ID_CURRENT);
-		// console.log("currentWindowId: ", currentWindowId);
-		if (windowID === currentWindowId) {
-			tabContentCurrent.appendChild(windowDivCurrentWindow);
-		}
+		tabContentAll.appendChild(windowDiv);
 	});
+}
+
+// Event Delegation System - replaces individual listeners with 2 delegated listeners
+function setupEventDelegation() {
+	const currentWindow = document.getElementById('currentWindow');
+	const allWindow = document.getElementById('allWindow');
+
+	// Remove existing listeners if any (simple approach)
+	currentWindow.removeEventListener('click', handleTabClick);
+	allWindow.removeEventListener('click', handleTabClick);
+
+	// Add single delegated listeners
+	currentWindow.addEventListener('click', handleTabClick);
+	allWindow.addEventListener('click', handleTabClick);
+}
+
+function handleTabClick(event) {
+	const listItem = event.target.closest('.list-item');
+	if (!listItem) return;
+
+	const tabId = listItem.tabid;  // Property, not attribute
+	const windowId = listItem.windowId;
+
+	if (event.target.classList.contains('remove-btn')) {
+		// Remove button clicked
+		event.stopPropagation();
+		removeItemFromLists(tabId);
+		closeOpenedTab(tabId);
+		updateCounterText();
+	} else if (event.ctrlKey || event.metaKey) {
+		// Ctrl+click: Toggle individual selection
+		event.preventDefault();
+		const activeTabContent = document.querySelector(".tab-content.active");
+		const items = [...activeTabContent.querySelectorAll(".list-item")];
+		const clickedIndex = items.indexOf(listItem);
+
+		// Toggle selection on clicked item
+		listItem.classList.toggle("selected");
+		listItem.classList.toggle("bg-blue-100");
+
+		// Update ARIA selection state - Phase 4 Accessibility
+		updateAriaSelected();
+
+		// Announce selection change - Phase 4 Accessibility
+		const selectedCount = document.querySelectorAll('.tab-content.active .list-item.selected').length;
+		announceToScreenReader(`${selectedCount} tab${selectedCount !== 1 ? 's' : ''} selected`);
+
+		// Update focus and index for continued keyboard navigation
+		focusAndUpdateIndex(listItem, clickedIndex, items);
+		lastClickedIndex = clickedIndex;
+	} else if (event.shiftKey && lastClickedIndex >= 0) {
+		// Shift+click: Range selection from last clicked to current
+		event.preventDefault();
+		const activeTabContent = document.querySelector(".tab-content.active");
+		const items = [...activeTabContent.querySelectorAll(".list-item")];
+		const clickedIndex = items.indexOf(listItem);
+
+		// Clear existing selections
+		items.forEach(item => {
+			item.classList.remove("selected", "bg-blue-100");
+		});
+
+		// Select range (include both endpoints)
+		const startIndex = Math.min(lastClickedIndex, clickedIndex);
+		const endIndex = Math.max(lastClickedIndex, clickedIndex);
+
+		for (let i = startIndex; i <= endIndex; i++) {
+			// Only select visible items (skip filtered/hidden)
+			if (items[i] && items[i].style.display !== 'none') {
+				items[i].classList.add("selected", "bg-blue-100");
+			}
+		}
+
+		// Update ARIA selection state - Phase 4 Accessibility
+		updateAriaSelected();
+
+		// Update focus and index for continued keyboard navigation
+		focusAndUpdateIndex(listItem, clickedIndex, items);
+		lastClickedIndex = clickedIndex;
+	} else {
+		// Regular click: Navigate to tab
+		goToOpenedTab(tabId, windowId);
+		updateCounterText();
+	}
 }
 
 function buildListItem (data, tabIndex) {
@@ -342,77 +445,7 @@ function buildListItem (data, tabIndex) {
 	removeBtn.textContent = "❌";
 	listItem.appendChild(removeBtn);
 
-	listItem.addEventListener(
-		"click",
-		(function (data) {
-			return function (event) {
-				// console.log("listItem click");
-				// console.log("listItem event.target: ", event.target);
-				if (event.target.classList.contains("remove-btn")) {
-					// console.log("listItem remove-btn click");
-					// event.target.parentElement.remove();
-					// need to remove the item from both lists
-					removeItemFromLists(data.id);
-					closeOpenedTab(data.id);
-					updateCounterText();
-				} else if (event.ctrlKey || event.metaKey) {
-					// Ctrl+click: Toggle individual selection
-					event.preventDefault();
-					const activeTabContent = document.querySelector(".tab-content.active");
-					const items = [...activeTabContent.querySelectorAll(".list-item")];
-					const clickedIndex = items.indexOf(listItem);
-
-					// Toggle selection on clicked item
-					listItem.classList.toggle("selected");
-					listItem.classList.toggle("bg-blue-100");
-
-					// Update ARIA selection state - Phase 4 Accessibility
-					updateAriaSelected();
-
-					// Announce selection change - Phase 4 Accessibility
-					const selectedCount = document.querySelectorAll('.tab-content.active .list-item.selected').length;
-					announceToScreenReader(`${selectedCount} tab${selectedCount !== 1 ? 's' : ''} selected`);
-
-					// Update focus and index for continued keyboard navigation
-					focusAndUpdateIndex(listItem, clickedIndex, items);
-					lastClickedIndex = clickedIndex;
-				} else if (event.shiftKey && lastClickedIndex >= 0) {
-					// Shift+click: Range selection from last clicked to current
-					event.preventDefault();
-					const activeTabContent = document.querySelector(".tab-content.active");
-					const items = [...activeTabContent.querySelectorAll(".list-item")];
-					const clickedIndex = items.indexOf(listItem);
-
-					// Clear existing selections
-					items.forEach(item => {
-						item.classList.remove("selected", "bg-blue-100");
-					});
-
-					// Select range (include both endpoints)
-					const startIndex = Math.min(lastClickedIndex, clickedIndex);
-					const endIndex = Math.max(lastClickedIndex, clickedIndex);
-
-					for (let i = startIndex; i <= endIndex; i++) {
-						// Only select visible items (skip filtered/hidden)
-						if (items[i] && items[i].style.display !== 'none') {
-							items[i].classList.add("selected", "bg-blue-100");
-						}
-					}
-
-					// Update ARIA selection state - Phase 4 Accessibility
-					updateAriaSelected();
-
-					// Update focus and index for continued keyboard navigation
-					focusAndUpdateIndex(listItem, clickedIndex, items);
-					lastClickedIndex = clickedIndex;
-				} else {
-					// Regular click: Navigate to tab
-					goToOpenedTab(data.id, data.windowId);
-					updateCounterText();
-				}
-			};
-		})(data)
-	);
+	// Event handling now done via delegation - see setupEventDelegation()
 
 	// Create hidden description for screen readers - Phase 4 Accessibility
 	const description = document.createElement('div');
@@ -536,7 +569,7 @@ function updateCounterText () {
 	const isSearching = searchInput.value.trim() !== "";
 	const searchIcon = isSearching ? "🔎 " : "";
 
-	// Count visible items in both tabs
+	// RESTORED: Original counting logic that works with window structure
 	let currentVisibleCount, allVisibleCount;
 
 	if (isSearching) {
@@ -563,8 +596,8 @@ function updateCounterText () {
 
 	tabTitleCurrent.textContent = `${searchIcon}Current (${currentVisibleCount})`;
 
-	// Count windows and update "All" tab title
-	chrome.windows.getAll({ "populate": true }, (window_list) => {
+	// Count windows and update "All" tab title (OPTIMIZED - removed populate: true)
+	chrome.windows.getAll({}, (window_list) => {
 		// Count visible windows when searching
 		let visibleWindowCount = window_list.length;
 		if (isSearching) {
@@ -1066,7 +1099,7 @@ function handleKeyDown (e) {
 function handleSearchInput (e) {
 	const searchTerm = searchInput.value.toLowerCase();
 
-	// Filter both tab contents simultaneously
+	// RESTORED: Original search logic that works with window structure
 	const allTabContents = document.querySelectorAll(".tab-content");
 
 	allTabContents.forEach((tabContent) => {
@@ -1079,7 +1112,7 @@ function handleSearchInput (e) {
 			item.style.display = isVisible ? "flex" : "none";
 		});
 
-		// Hide windows that have no visible tabs
+		// Hide windows that have no visible tabs (CRITICAL for "All" tab functionality)
 		const windows = tabContent.querySelectorAll(".window");
 		windows.forEach((windowDiv) => {
 			const hasVisibleTabs = Array.from(windowDiv.querySelectorAll(".list-item")).some(item => {
