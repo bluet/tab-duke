@@ -10,25 +10,38 @@ function updateBadgeTitle (count) {
 
 // set icon's text
 async function updateBadgeText () {
-	const { "badgeDisplayOption": displayOption } = await chrome.storage.local.get(["badgeDisplayOption"]);
-	if (!displayOption || displayOption === "allWindows") {
-		// show the tabs count in all windows
+	try {
+		const { "badgeDisplayOption": displayOption } = await chrome.storage.local.get(["badgeDisplayOption"]);
+		if (!displayOption || displayOption === "allWindows") {
+			// show the tabs count in all windows
+			chrome.action.setBadgeText({ "text": String(allWindowsTabCount) });
+			updateBadgeTitle(allWindowsTabCount);
+		} else if (displayOption === "currentWindow") {
+			// show the tabs count in current window
+			const currentWindowTabs = await chrome.tabs.query({ "currentWindow": true });
+			chrome.action.setBadgeText({ "text": String(currentWindowTabs.length) });
+		} else if (displayOption === "windowsCount") {
+			// show the windows count
+			chrome.action.setBadgeText({ "text": String(windowsCount) });
+			updateBadgeTitle(windowsCount);
+		}
+	} catch (error) {
+		console.error('Failed to update badge text:', error.message);
+		// Fallback: show total count from global variable
 		chrome.action.setBadgeText({ "text": String(allWindowsTabCount) });
-		updateBadgeTitle(allWindowsTabCount);
-	} else if (displayOption === "currentWindow") {
-		// show the tabs count in current window
-		let currentWindowTabs = chrome.tabs.query({ "currentWindow": true });
-		chrome.action.setBadgeText({ "text": String(currentWindowTabs.length) });
-	} else if (displayOption === "windowsCount") {
-		// show the windows count
-		chrome.action.setBadgeText({ "text": String(windowsCount) });
-		updateBadgeTitle(windowsCount);
 	}
 }
 
 // count all tabs in all windows
 function getAllStats (callback) {
-	chrome.windows.getAll({ "populate": true }, callback);
+	chrome.windows.getAll({ "populate": true }, (windows) => {
+		if (chrome.runtime.lastError) {
+			console.error('Failed to get all windows stats:', chrome.runtime.lastError.message);
+			callback([]); // Return empty array on error
+			return;
+		}
+		callback(windows || []);
+	});
 }
 
 function displayResults (window_list) {
@@ -44,17 +57,35 @@ function displayResults (window_list) {
 function registerTabDedupeHandler () {
 	chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 		if (changeInfo.url) {
-			const tabs = await chrome.tabs.query({ "url": changeInfo.url });
-			if (tabs.length === 2 && changeInfo.url !== "chrome://newtab/") {
-				const oldTab = tabs[0].id === tabId ? tabs[1] : tabs[0];
-				const dedupe = confirm("Duplicate tab detected. Switch to existing open tab?");
-				if (dedupe) {
-					chrome.tabs.update(oldTab.id, { "active": true }, () => {
-						chrome.windows.update(oldTab.windowId, { "focused": true }, () => {
-							chrome.tabs.remove(tabId);
+			try {
+				const tabs = await chrome.tabs.query({ "url": changeInfo.url });
+				if (tabs.length === 2 && changeInfo.url !== "chrome://newtab/") {
+					const oldTab = tabs[0].id === tabId ? tabs[1] : tabs[0];
+					const dedupe = confirm("Duplicate tab detected. Switch to existing open tab?");
+					if (dedupe) {
+						chrome.tabs.update(oldTab.id, { "active": true }, () => {
+							if (chrome.runtime.lastError) {
+								console.error('Failed to switch to existing tab during dedupe:', chrome.runtime.lastError.message);
+								return; // Don't continue with window focus if tab switch failed
+							}
+							chrome.windows.update(oldTab.windowId, { "focused": true }, () => {
+								if (chrome.runtime.lastError) {
+									console.error('Failed to focus window during dedupe:', chrome.runtime.lastError.message);
+									return; // Don't remove duplicate tab if window focus failed
+								}
+								chrome.tabs.remove(tabId, () => {
+									if (chrome.runtime.lastError) {
+										console.error('Failed to remove duplicate tab:', chrome.runtime.lastError.message);
+										// Tab removal failed, but user was already switched to existing tab
+									}
+								});
+							});
 						});
-					});
+					}
 				}
+			} catch (error) {
+				console.error('Failed to query tabs for deduplication:', error.message);
+				// Skip deduplication on error - tab will remain as is
 			}
 		}
 	});
@@ -68,7 +99,15 @@ function registerTabJanitor (days) {
 			const now = Date.now();
 			for (const [tabId, ts] of Object.entries(tab_activation_history)) {
 				if (now - ts > 1000 * 60 * 60 * 24 * days) {
-					chrome.tabs.remove(parseInt(tabId));
+					chrome.tabs.remove(parseInt(tabId), () => {
+						if (chrome.runtime.lastError) {
+							console.error(`Failed to remove inactive tab ${tabId}:`, chrome.runtime.lastError.message);
+							// Tab might have been already closed or invalid - continue with cleanup
+						} else {
+							// Successfully removed tab, clean up history
+							delete tab_activation_history[tabId];
+						}
+					});
 				}
 			}
 		}
@@ -117,6 +156,25 @@ async function init () {
 		registerTabJanitor(tabJanitorDays);
 	}
 }
+
+// Global error boundary for unhandled JavaScript exceptions in background script (service worker)
+self.addEventListener('error', (error) => {
+	console.error('TabDuke Background Global Error:', {
+		message: error.message,
+		filename: error.filename,
+		line: error.lineno,
+		column: error.colno,
+		stack: error.error?.stack
+	});
+});
+
+self.addEventListener('unhandledrejection', (event) => {
+	console.error('TabDuke Background Unhandled Promise Rejection:', {
+		reason: event.reason,
+		promise: event.promise
+	});
+	// Don't prevent default in service worker context - just log
+});
 
 // Initialize the extension.
 init();
