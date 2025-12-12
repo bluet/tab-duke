@@ -27,12 +27,23 @@ TabDuke comes with a pre-configured keyboard shortcut `Alt+Z` (or `Command+Z` on
 
 ## Special Keyboard Features
 
-### Tab View Switching
-- **Ctrl+ArrowLeft / Ctrl+ArrowRight** (Mac: **Cmd+ArrowLeft / Cmd+ArrowRight**) - Switch between "Current Window" and "All Windows" tabs
+### Basic Navigation
+- **ArrowUp / ArrowDown** - Navigate up/down one item in the tab list
+- **Enter** - Navigate from search input to first visible item, handles multi-select warnings
 - **Tab / Shift+Tab** - Navigate between search input and list content (required for accessibility)
 
+### Fast Navigation
+- **PageUp / PageDown** - Jump 10 items at a time (fast scrolling through long lists)
+- **Home / End** - Jump to first/last item in current list
+- **Ctrl+G** (Mac: **Cmd+G**) - Context-aware active tab jumping:
+  - In "Current Window": Jump to currently active browser tab
+  - In "All Windows": Cycle forward through active tabs across all windows
+- **Ctrl+Shift+G** (Mac: **Cmd+Shift+G**) - Reverse cycle through active tabs (All Windows only)
+
+### Tab View Switching
+- **Ctrl+ArrowLeft / Ctrl+ArrowRight** (Mac: **Cmd+ArrowLeft / Cmd+ArrowRight**) - Switch between "Current Window" and "All Windows" tabs
+
 ### Advanced Navigation
-- **Ctrl+G** (Mac: **Cmd+G**) - Jump to currently active browser tab (works across all views)
 - **Alt+Up / Alt+Down** - Navigate between window sections (All Windows tab only)
 
 ### Search & Filtering
@@ -57,6 +68,8 @@ TabDuke comes with a pre-configured keyboard shortcut `Alt+Z` (or `Command+Z` on
 ### Pro Tips
 - Search filtering works across all views instantly - search in Current view finds tabs, switch to All view and same search is already applied
 - Multi-selection is designed for bulk operations like closing many tabs quickly
+- **Enter key behavior**: When multiple tabs are selected, pressing Enter shows a warning instead of navigating. Press Enter again to proceed or Escape to cancel
+- **Ctrl+G cycling**: In "All Windows" view with 30+ windows, use Ctrl+G to cycle forward and Ctrl+Shift+G to cycle backward through active tabs across all windows
 
 ## Permissions
 
