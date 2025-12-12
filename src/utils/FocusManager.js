@@ -75,45 +75,45 @@ class FocusManager {
 	}
 
 	/**
-	 * Restore focus after switching between tab views
-	 * @param {HTMLElement[]} newItems - Items in the newly active tab view
+	 * Restore focus to previously saved position
+	 * @param {HTMLElement[]} items - Items in the current view
 	 * @returns {boolean} - True if focus was successfully restored
 	 */
-	restoreFocusAfterTabSwitch(newItems) {
+	restoreSavedFocusPosition(items) {
 		this.updateActiveTabName(); // Update which tab is now active
 		const tabData = this.getCurrentTabData();
 
 		// Try to restore to the exact same index first (only if we have valid previous data)
-		if (tabData.lastFocusedIndex >= 0 && tabData.lastFocusedIndex < newItems.length && newItems[tabData.lastFocusedIndex]) {
-			const targetItem = newItems[tabData.lastFocusedIndex];
+		if (tabData.lastFocusedIndex >= 0 && tabData.lastFocusedIndex < items.length && items[tabData.lastFocusedIndex]) {
+			const targetItem = items[tabData.lastFocusedIndex];
 			if (targetItem.style.display !== 'none') {
-				this.focusAndUpdateIndex(targetItem, tabData.lastFocusedIndex, newItems);
+				this.focusAndUpdateIndex(targetItem, tabData.lastFocusedIndex, items);
 				return true;
 			}
 		}
 
 		// Fallback to relative position if exact index doesn't work
-		const targetIndex = Math.floor(tabData.relativePosition * newItems.length);
-		const clampedIndex = Math.min(targetIndex, newItems.length - 1);
-		const targetItem = newItems[clampedIndex];
+		const targetIndex = Math.floor(tabData.relativePosition * items.length);
+		const clampedIndex = Math.min(targetIndex, items.length - 1);
+		const targetItem = items[clampedIndex];
 
 		if (targetItem.style.display !== 'none') {
-			this.focusAndUpdateIndex(targetItem, clampedIndex, newItems);
+			this.focusAndUpdateIndex(targetItem, clampedIndex, items);
 			return true;
 		}
 
 		// Better fallback: Look for current active tab first, then first visible
-		const currentActiveItem = newItems.find(item => item.classList.contains('tab-active'));
+		const currentActiveItem = items.find(item => item.classList.contains('tab-active'));
 		if (currentActiveItem) {
-			const activeIndex = newItems.indexOf(currentActiveItem);
-			this.focusAndUpdateIndex(currentActiveItem, activeIndex, newItems);
+			const activeIndex = items.indexOf(currentActiveItem);
+			this.focusAndUpdateIndex(currentActiveItem, activeIndex, items);
 			return true;
 		}
 
 		// Final fallback to first visible if no current active tab found
-		const firstVisible = this.findFirstVisibleItem(newItems);
+		const firstVisible = this.findFirstVisibleItem(items);
 		if (firstVisible) {
-			this.focusAndUpdateIndex(firstVisible.item, firstVisible.index, newItems);
+			this.focusAndUpdateIndex(firstVisible.item, firstVisible.index, items);
 			return true;
 		}
 

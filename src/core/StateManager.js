@@ -118,7 +118,7 @@ class StateManager {
 
 			const newItems = [...newTarget.querySelectorAll('.list-item')];
 			if (newItems.length > 0) {
-				this.focusManager.restoreFocusAfterTabSwitch(newItems);
+				this.focusManager.restoreSavedFocusPosition(newItems);
 			}
 		}, 10);
 	}
@@ -232,32 +232,45 @@ class StateManager {
 	}
 
 	/**
-	 * Handle Escape sequence (context-aware state clearing)
+	 * Handle Escape sequence (improved context-aware state clearing)
+	 * Priority system: List-centric UX with search as temporary branch
 	 * @param {KeyboardEvent} e - Keyboard event
 	 * @param {Object} context - Navigation context
 	 */
 	handleEscapeSequence(e, context) {
-		// Always clear multi-select warning first
+		// Priority 1: Always clear multi-select warning first
 		this.clearMultiSelectWarning();
 
-		if (this.searchInput === document.activeElement && this.searchInput.value !== "") {
-			// Clear search text, stay in search
-			this.searchInput.value = "";
-			this.searchEngine.performSearch("");
-			e.preventDefault();
-		} else if (this.searchInput === document.activeElement) {
-			// Empty search: allow popup close (don't preventDefault)
-			return;
-		} else {
-			// In list: check for selections or move to search
-			const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
-			if (selectedItems.length > 0) {
-				this.clearSelections(selectedItems);
+		const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
+		const searchHasText = this.searchInput.value !== "";
+		const focusInSearch = this.searchInput === document.activeElement;
+
+		if (focusInSearch) {
+			// Search field context
+			if (searchHasText) {
+				// Priority 4: Search field + has text → Clear text, stay in search
+				this.searchInput.value = "";
+				this.searchEngine.performSearch("");
 				e.preventDefault();
 			} else {
+				// Priority 5: Search field + empty → Jump back to list (restore focus)
+				this.focusManager.restoreSavedFocusPosition(context.items);
+				e.preventDefault();
+			}
+		} else {
+			// List context (default focus state)
+			if (selectedItems.length > 0) {
+				// Priority 2: List + selections → Clear selections, stay in list
+				this.clearSelections(selectedItems);
+				e.preventDefault();
+			} else if (searchHasText) {
+				// Priority 3A: List + no selections + search has text → Jump to search
 				this.focusManager.saveCurrentFocusPosition(context.items);
 				this.searchInput.focus();
 				e.preventDefault();
+			} else {
+				// Priority 3B: List + no selections + search empty → Allow popup close
+				return; // No preventDefault() - let browser close popup
 			}
 		}
 	}

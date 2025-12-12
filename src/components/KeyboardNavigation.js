@@ -113,7 +113,7 @@ class KeyboardNavigation {
 			this.searchInput.focus();
 		} else if (!e.shiftKey && this.searchInput === document.activeElement) {
 			e.preventDefault();
-			this.focusManager.restoreFocusAfterTabSwitch(context.items);
+			this.focusManager.restoreSavedFocusPosition(context.items);
 		} else if (!e.shiftKey) {
 			e.preventDefault();
 			this.searchInput.focus();
@@ -156,12 +156,20 @@ class KeyboardNavigation {
 	}
 
 	handleSpace(e, context) {
-		e.preventDefault();
-		this.stateManager.toggleSelection(context.currentItemIndex, context.items);
+		// Only handle multi-select when focus is specifically on a list item
+		if (document.activeElement && document.activeElement.classList.contains('list-item')) {
+			e.preventDefault();
+			this.stateManager.toggleSelection(context.currentItemIndex, context.items);
+		}
+		// For all other contexts (search input, tab buttons, etc.), allow default behavior
 	}
 
 	handleDelete(e, context) {
-		this.stateManager.handleBulkDelete(context);
+		// Only handle delete when focus is specifically on a list item
+		if (document.activeElement && document.activeElement.classList.contains('list-item')) {
+			this.stateManager.handleBulkDelete(context);
+		}
+		// For all other contexts (search input, tab buttons, etc.), ignore delete key
 	}
 
 	handleEnter(e, context) {
@@ -173,10 +181,13 @@ class KeyboardNavigation {
 	}
 
 	handleSelectAll(e, context) {
-		if ((e.ctrlKey || e.metaKey) && this.searchInput !== document.activeElement) {
+		// Only handle select-all when focus is specifically on a list item
+		if ((e.ctrlKey || e.metaKey) && document.activeElement &&
+		    document.activeElement.classList.contains('list-item')) {
 			e.preventDefault();
 			this.stateManager.selectAllVisible(context.items);
 		}
+		// For all other contexts (search input, tab buttons, etc.), allow default behavior
 	}
 
 	handleJumpToActive(e, context) {

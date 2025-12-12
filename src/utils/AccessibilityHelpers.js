@@ -179,7 +179,7 @@ class AccessibilityHelpers {
 	 */
 	announceSearchResults(totalCount, searchTerm) {
 		let message;
-		if (!searchTerm || searchTerm.trim() === '') {
+		if (!searchTerm || searchTerm === '') {
 			message = `Showing all tabs`;
 		} else if (totalCount === 0) {
 			message = `No tabs found for "${searchTerm}"`;

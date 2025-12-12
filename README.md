@@ -48,14 +48,14 @@ TabDuke comes with a pre-configured keyboard shortcut `Alt+Z` (or `Command+Z` on
 
 ### Search & Filtering
 - **Type any character** - Auto-focus search input and filter tabs
-- **Escape** - Context-aware: clear search text → clear selections → move focus → allow popup close
+- **Escape** - Progressive context clearing: clear search text → clear selections → jump to search → allow popup close (list-centric flow)
 
 ### Tab Actions
-- **Delete** - Close selected tabs (supports bulk operations)
-- **Space** - Toggle individual tab selection
+- **Delete** - Close selected tabs (only works when focused on list items, only deletes selected tabs)
+- **Space** - Toggle individual tab selection (only works when focused on list items)
 
 ### Multi-Selection Features
-- **Ctrl+A** (Mac: **Cmd+A**) - Context-aware: select search text (in search) or select all visible tabs (in list)
+- **Ctrl+A** (Mac: **Cmd+A**) - Select all visible tabs (only works when focused on list items)
 - **Ctrl+Click** (Mac: **Cmd+Click**) - Toggle individual tab selection
 - **Shift+Click** - Select range of tabs
 - **Delete** (with multiple selections) - Bulk close multiple tabs at once

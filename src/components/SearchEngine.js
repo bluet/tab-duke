@@ -67,7 +67,7 @@ class SearchEngine {
 	 * @param {Event} e - Input event from search field
 	 */
 	handleSearchInput(e) {
-		const searchTerm = this.searchInput.value.toLowerCase().trim();
+		const searchTerm = this.searchInput.value.toLowerCase();
 
 		// Skip if search term hasn't changed (performance optimization)
 		if (searchTerm === this.lastSearchTerm) {
@@ -171,7 +171,7 @@ class SearchEngine {
 	 * @returns {string} - Current search term
 	 */
 	getSearchTerm() {
-		return this.searchInput ? this.searchInput.value.toLowerCase().trim() : '';
+		return this.searchInput ? this.searchInput.value.toLowerCase() : '';
 	}
 
 	/**
@@ -181,7 +181,7 @@ class SearchEngine {
 	setSearchTerm(term) {
 		if (this.searchInput) {
 			this.searchInput.value = term;
-			this.performSearch(term.toLowerCase().trim());
+			this.performSearch(term.toLowerCase());
 		}
 	}
 
