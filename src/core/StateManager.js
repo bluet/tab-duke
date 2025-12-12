@@ -103,7 +103,7 @@ class StateManager {
 
 		this.tabs[newTabIndex].click();
 
-		// Restore focus after tab switch
+		// Restore focus after tab switch - each tab restores its own independent position
 		setTimeout(() => {
 			if (!this.tabs[newTabIndex] || !this.tabs[newTabIndex].dataset.tabTarget) {
 				console.error(`StateManager.handleTabViewSwitch: Tab at index ${newTabIndex} missing dataset.tabTarget`);
@@ -118,6 +118,7 @@ class StateManager {
 
 			const newItems = [...newTarget.querySelectorAll('.list-item')];
 			if (newItems.length > 0) {
+				// Let target tab restore its own saved position (independent focus per tab)
 				this.focusManager.restoreSavedFocusPosition(newItems);
 			}
 		}, 10);

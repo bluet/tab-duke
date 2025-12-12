@@ -24,25 +24,24 @@ class FocusManager {
 		this.focusRestoreData = {
 			currentTab: {
 				lastFocusedIndex: -1, // -1 means no previous focus data
-				relativePosition: 0
+				relativePosition: 0,
+				currentIndex: 0 // Current focused index for this tab
 			},
 			allTab: {
 				lastFocusedIndex: -1, // -1 means no previous focus data
-				relativePosition: 0
+				relativePosition: 0,
+				currentIndex: 0 // Current focused index for this tab
 			},
 			activeTabName: 'currentTab' // 'currentTab' or 'allTab'
 		};
-
-		// Global state reference (will be injected)
-		this.currentItemIndex = 0;
 	}
 
 	/**
-	 * Set the global state reference
+	 * Set the global state reference (deprecated - now using per-tab indexes)
 	 * @param {Object} state - Global state object with currentItemIndex
 	 */
 	setState(state) {
-		this.currentItemIndex = state.currentItemIndex;
+		// Legacy method - no longer needed as we use per-tab indexing
 	}
 
 	/**
@@ -61,8 +60,10 @@ class FocusManager {
 			this.focusWithInstantScroll(item);
 		}
 
-		// Update global state
-		this.currentItemIndex = index;
+		// Update current tab's index
+		this.updateActiveTabName();
+		const tabData = this.getCurrentTabData();
+		tabData.currentIndex = index;
 
 		// Update accessibility
 		this.updateRovingTabindex(items, index);
@@ -75,12 +76,14 @@ class FocusManager {
 	}
 
 	/**
-	 * Restore focus to previously saved position
+	 * Restore focus to previously saved position for the current tab
 	 * @param {HTMLElement[]} items - Items in the current view
 	 * @returns {boolean} - True if focus was successfully restored
 	 */
 	restoreSavedFocusPosition(items) {
 		this.updateActiveTabName(); // Update which tab is now active
+
+		// Use current tab's own saved data (independent focus per tab)
 		const tabData = this.getCurrentTabData();
 
 		// Try to restore to the exact same index first (only if we have valid previous data)
@@ -126,8 +129,8 @@ class FocusManager {
 	 */
 	saveCurrentFocusPosition(items) {
 		const tabData = this.getCurrentTabData();
-		tabData.lastFocusedIndex = this.currentItemIndex;
-		tabData.relativePosition = this.calculateRelativePosition(this.currentItemIndex, items.length);
+		tabData.lastFocusedIndex = tabData.currentIndex;
+		tabData.relativePosition = this.calculateRelativePosition(tabData.currentIndex, items.length);
 	}
 
 	/**
@@ -153,12 +156,12 @@ class FocusManager {
 			this.focusRestoreData.allTab.relativePosition = this.calculateRelativePosition(allTabIndex, allWindowItems.length);
 		}
 
-		// Set currentItemIndex for the currently visible tab view
+		// Set currentIndex for the currently visible tab view
 		this.updateActiveTabName();
 		if (this.focusRestoreData.activeTabName === 'currentTab' && currentTabIndex >= 0) {
-			this.currentItemIndex = currentTabIndex;
+			this.focusRestoreData.currentTab.currentIndex = currentTabIndex;
 		} else if (this.focusRestoreData.activeTabName === 'allTab' && allTabIndex >= 0) {
-			this.currentItemIndex = allTabIndex;
+			this.focusRestoreData.allTab.currentIndex = allTabIndex;
 		}
 	}
 
@@ -171,10 +174,37 @@ class FocusManager {
 	 */
 	focusWithSmartScroll(item, transition = 'instant') {
 		item.focus();
+
+		// Check if item is already reasonably visible before scrolling
+		if (this.isItemReasonablyVisible(item)) {
+			return; // No scrolling needed
+		}
+
+		// Use 'start' to force scrolling when item is covered by sticky header
+		// CSS scroll-margin-top will position it correctly below the header
 		item.scrollIntoView({
-			block: 'nearest',    // Only scroll if not fully visible
+			block: 'start',
 			behavior: transition
 		});
+	}
+
+	/**
+	 * Check if an item is reasonably visible (not covered by sticky header)
+	 * @param {HTMLElement} item - Element to check
+	 * @returns {boolean} - True if item is fully visible below sticky header
+	 */
+	isItemReasonablyVisible(item) {
+		const rect = item.getBoundingClientRect();
+
+		// Find the sticky header
+		const stickyHeader = document.getElementById('tabMenu');
+		if (!stickyHeader) return true; // If no header, assume visible
+
+		const headerRect = stickyHeader.getBoundingClientRect();
+		const margin = 16; // Small breathing room
+
+		// Item is visible if it starts below the sticky header with some margin
+		return rect.top >= (headerRect.bottom + margin);
 	}
 
 	/**
@@ -300,10 +330,14 @@ class FocusManager {
 		const items = activeTabContent.querySelectorAll(".list-item");
 		let found = false;
 
+		// Get current tab data to update the correct tab's index
+		this.updateActiveTabName();
+		const tabData = this.getCurrentTabData();
+
 		// First try: exact tabid match
 		items.forEach((item, index) => {
 			if (item.tabid == currentTabId) {
-				this.currentItemIndex = index;
+				tabData.currentIndex = index;
 				found = true;
 				return;
 			}
@@ -316,13 +350,13 @@ class FocusManager {
 					// For "All Windows" view: find tab-active from current window
 					if (activeTabContent.id === 'allWindow' && currentWindowId) {
 						if (item.windowId == currentWindowId) {
-							this.currentItemIndex = index;
+							tabData.currentIndex = index;
 							found = true;
 							return;
 						}
 					} else {
 						// For "Current Window" view: use any tab-active (there should be only one)
-						this.currentItemIndex = index;
+						tabData.currentIndex = index;
 						found = true;
 						return;
 					}
@@ -333,7 +367,7 @@ class FocusManager {
 			if (!found && activeTabContent.id === 'allWindow') {
 				items.forEach((item, index) => {
 					if (item.classList.contains('tab-active')) {
-						this.currentItemIndex = index;
+						tabData.currentIndex = index;
 						found = true;
 						return;
 					}
@@ -343,16 +377,18 @@ class FocusManager {
 
 		// Last resort: stay at 0
 		if (!found) {
-			this.currentItemIndex = 0;
+			tabData.currentIndex = 0;
 		}
 	}
 
 	/**
-	 * Get current item index
+	 * Get current item index for the active tab
 	 * @returns {number} - Current item index
 	 */
 	getCurrentItemIndex() {
-		return this.currentItemIndex || 0;
+		this.updateActiveTabName();
+		const tabData = this.getCurrentTabData();
+		return tabData.currentIndex || 0;
 	}
 }
 

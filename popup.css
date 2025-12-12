@@ -61,6 +61,9 @@ body {
   display: flex;
   align-items: center;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+  /* Add scroll margins for better visibility when focused item comes into view */
+  scroll-margin-top: 6rem;    /* 96px - accounts for sticky tab header + breathing room */
+  scroll-margin-bottom: 2rem; /* 32px breathing room below */
 }
 
 /* .list-item.selected {
