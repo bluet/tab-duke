@@ -6,6 +6,11 @@
 **Current State**: 8.2/10 Architecture Excellence with Critical Security Gaps - Immediate Action Required
 **Overall Assessment**: Exceptional technical achievement requiring urgent security fixes for continued production deployment
 
+## 📌 New Action Items (2026-01-09)
+- [x] Sanitize favicon URLs in `src/components/TabRenderer.js` similarly to options page (HIGH-002)
+- [x] Keep build pipeline guardrail: ensure `npm run build-css` is executed before packaging the extension (use `npm run pack`)
+- [ ] Establish automated test harness (Jest + Chrome API mocks) and start covering critical services/keyboard flows
+
 ## 🚨 CRITICAL FINDINGS - EXPERT MULTI-DOMAIN ANALYSIS
 
 **✅ EXCEPTIONAL ACHIEVEMENTS VERIFIED**:

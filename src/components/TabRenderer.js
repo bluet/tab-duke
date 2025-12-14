@@ -277,8 +277,12 @@ class TabRenderer {
 		favicon.setAttribute("height", "16");
 		favicon.setAttribute("alt", "favicon");
 
-		if (data.favIconUrl) {
-			favicon.src = data.favIconUrl;
+		const faviconUrl = data.favIconUrl;
+		if (faviconUrl && this.isSafeFaviconUrl(faviconUrl)) {
+			favicon.src = faviconUrl;
+		} else {
+			favicon.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRkZGIi8+Cjx0ZXh0IHg9IjgiIHk9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+8J+MkDwvdGV4dD4KPHN2Zz4K";
+			favicon.classList.add("favicon-broken");
 		}
 
 		// Handle broken favicon images gracefully
@@ -287,6 +291,23 @@ class TabRenderer {
 		});
 
 		return favicon;
+	}
+
+	isSafeFaviconUrl(url) {
+		try {
+			const parsed = new URL(url);
+			const allowedProtocols = ["http:", "https:", "chrome:", "data:"];
+			if (!allowedProtocols.includes(parsed.protocol)) {
+				return false;
+			}
+			if (parsed.protocol === "data:") {
+				return url.startsWith("data:image/");
+			}
+			return true;
+		} catch (error) {
+			console.error("TabRenderer: Invalid favicon URL skipped:", error.message);
+			return false;
+		}
 	}
 
 	/**

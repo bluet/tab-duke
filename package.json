@@ -1,7 +1,7 @@
 {
   "name": "tab-duke",
   "description": "Tab Duke is a heavily rewritten, updated fork of Tab Count and is inspired by Tabman Tabs Manager.  It is a Chrome extension that displays the count and list of open tabs from the current or all windows (configurable). It also allows you to select and/or close them.",
-  "version": "0.1.1",
+  "version": "1.2.0",
   "devDependencies": {
     "@babel/eslint-parser": "^7.23.3",
     "eslint": "^8.55.0",
@@ -11,7 +11,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-css": "npx tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.min.css --minify",
-    "watch-css": "npx tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.min.css --watch"
+    "watch-css": "npx tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.min.css --watch",
+    "pack": "npm run build-css && bash ./scripts/pack-extension.sh"
   },
   "repository": {
     "type": "git",
