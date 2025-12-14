@@ -85,7 +85,7 @@ Local run (manual): open `chrome://extensions` → enable **Developer mode** →
 - **XSS Prevention**: Safe DOM creation using createElement() instead of innerHTML in options.js
 - **Favicon URL Validation**: URL scheme validation preventing malicious favicon sources
 - **Content Security Policy**: Strict CSP blocking external scripts while allowing legitimate resources
-- **Minimal Permissions**: Only `tabs`, `windows`, `storage`, `alarms` - no host_permissions needed
+- **Minimal Permissions**: Only `tabs`, `windows`, `storage`, `alarms`, `notifications` - no host_permissions needed
 
 ### Performance Optimizations
 - **Real-time Search**: 1.88ms response time (100x improvement from 203ms)
