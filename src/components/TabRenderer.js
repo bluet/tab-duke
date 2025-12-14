@@ -1,33 +1,72 @@
 /**
- * TabRenderer - DOM rendering and event delegation service
+ * @fileoverview TabRenderer - DOM rendering and event delegation service
+ * @description Manages all DOM rendering operations for tab lists with optimized
+ * performance and proper event delegation. Extracted from popup.js following
+ * service-oriented architecture principles for maintainable rendering logic.
  *
- * Extracted from popup.js (lines 251-458) following the TODO.md plan
- * Manages all DOM rendering operations for tab lists with optimized
- * performance and proper event delegation.
+ * @author TabDuke Development Team
+ * @since 0.1.0
+ * @version 1.0.0
+ */
+
+/**
+ * TabRenderer class - DOM rendering and event delegation service
+ *
+ * Extracted from popup.js following the TODO.md service decomposition plan.
+ * Manages all DOM rendering operations for tab lists with performance-optimized
+ * approaches and comprehensive event delegation patterns.
  *
  * Key responsibilities:
- * - Render tab lists in both Current and All Windows views
- * - Build individual tab list items with proper styling and accessibility
- * - Manage window grouping and headers
- * - Setup and manage event delegation for performance
- * - Handle favicon loading and error states
+ * - Render tab lists in both Current Window and All Windows views
+ * - Build individual tab list items with proper styling and accessibility attributes
+ * - Manage window grouping and headers for multi-window display
+ * - Setup and manage event delegation for optimal performance
+ * - Handle favicon loading, error states, and visual indicators
+ * - Coordinate with accessibility helpers for screen reader support
  *
- * Benefits:
- * - Centralized rendering logic
- * - Optimized DOM manipulation
- * - Consistent visual styling
- * - Professional event handling
- * - Easy to extend with new features
+ * Performance optimizations:
+ * - Event delegation (2600+ individual listeners → 2 delegated)
+ * - Batch DOM manipulation with DocumentFragment
+ * - Optimized window grouping algorithms
+ * - Lazy favicon loading with error fallbacks
+ *
+ * @class TabRenderer
+ * @since 0.1.0
+ *
+ * @example
+ * const renderer = new TabRenderer();
+ * renderer.initialize(tabClickHandler);
+ * renderer.renderTabs(allTabs, currentWindowId);
  */
 class TabRenderer {
+	/**
+	 * Create a new TabRenderer instance
+	 *
+	 * Initializes the renderer with default state. Event delegation and click
+	 * handlers are set up during initialization to maintain clean separation.
+	 *
+	 * @since 0.1.0
+	 */
 	constructor() {
+		/** @private */
 		this.eventDelegationSetup = false;
+		/** @private */
 		this.clickHandler = null;
 	}
 
 	/**
 	 * Initialize the renderer with required dependencies
+	 *
+	 * Must be called before rendering to establish the click event handler.
+	 * The handler will be called for all tab click events via delegation.
+	 *
 	 * @param {Function} tabClickHandler - Handler for tab click events
+	 * @since 0.1.0
+	 *
+	 * @example
+	 * renderer.initialize((tabId, windowId) => {
+	 *   console.log(`Tab ${tabId} clicked in window ${windowId}`);
+	 * });
 	 */
 	initialize(tabClickHandler) {
 		this.clickHandler = tabClickHandler;
@@ -35,8 +74,18 @@ class TabRenderer {
 
 	/**
 	 * Render tabs in both Current and All Windows views
-	 * @param {chrome.tabs.Tab[]} items - Array of tab objects
-	 * @param {number} currentWindowId - ID of the current window
+	 *
+	 * Main rendering method that populates both tab views with optimized DOM
+	 * manipulation. Uses window grouping for organization and sets up event
+	 * delegation for performance.
+	 *
+	 * @param {chrome.tabs.Tab[]} items - Array of tab objects from Chrome API
+	 * @param {number} currentWindowId - ID of the current browser window
+	 * @since 0.1.0
+	 *
+	 * @example
+	 * // Render all tabs with current window context
+	 * renderer.renderTabs(allTabs, currentWindow.id);
 	 */
 	renderTabs(items, currentWindowId) {
 		const tabContentCurrent = document.getElementById("currentWindow");
@@ -62,8 +111,17 @@ class TabRenderer {
 
 	/**
 	 * Group tabs by window ID for organized rendering
-	 * @param {chrome.tabs.Tab[]} items - Array of tab objects
-	 * @returns {Map} - Map of windowId to tab arrays
+	 *
+	 * Creates a window-based organization structure for efficient rendering
+	 * in the All Windows view. Preserves original tab order within windows.
+	 *
+	 * @param {chrome.tabs.Tab[]} items - Array of tab objects from Chrome API
+	 * @returns {Map<number, chrome.tabs.Tab[]>} Map of windowId to tab arrays
+	 * @since 0.1.0
+	 *
+	 * @example
+	 * const windowMap = renderer.groupTabsByWindow(allTabs);
+	 * // windowMap.get(windowId) returns tabs for that window
 	 */
 	groupTabsByWindow(items) {
 		const windowMap = new Map();
@@ -80,10 +138,16 @@ class TabRenderer {
 
 	/**
 	 * Render tabs with optimized DOM manipulation
-	 * @param {Map} windowMap - Map of windowId to tab arrays
-	 * @param {number} currentWindowId - ID of current window
-	 * @param {HTMLElement} tabContentCurrent - Current window container
-	 * @param {HTMLElement} tabContentAll - All windows container
+	 *
+	 * Core rendering implementation using batch DOM operations for performance.
+	 * Populates both Current Window (flat list) and All Windows (grouped) views.
+	 *
+	 * @param {Map<number, chrome.tabs.Tab[]>} windowMap - Map of windowId to tab arrays
+	 * @param {number} currentWindowId - ID of current browser window
+	 * @param {HTMLElement} tabContentCurrent - Current window container element
+	 * @param {HTMLElement} tabContentAll - All windows container element
+	 * @since 0.1.0
+	 * @private
 	 */
 	renderOptimized(windowMap, currentWindowId, tabContentCurrent, tabContentAll) {
 		// Clear containers

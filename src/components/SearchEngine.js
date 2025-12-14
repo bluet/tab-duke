@@ -1,34 +1,76 @@
 /**
- * SearchEngine - Search and filtering service
+ * @fileoverview SearchEngine - Search and filtering service
+ * @description Provides fast, real-time search functionality across all tab views
+ * with intelligent window visibility management and counter updates. Extracted from
+ * popup.js following service-oriented architecture principles.
  *
- * Extracted from popup.js (lines 1150-1178) following the TODO.md plan
- * Provides fast, real-time search functionality across all tab views
- * with window visibility management and counter updates.
+ * @author TabDuke Development Team
+ * @since 0.1.0
+ * @version 1.0.0
+ */
+
+/**
+ * SearchEngine class - Search and filtering service
+ *
+ * Extracted from popup.js following the TODO.md service decomposition plan.
+ * Provides fast, real-time search functionality with intelligent filtering
+ * and window visibility management for optimal user experience.
  *
  * Key responsibilities:
- * - Real-time tab filtering based on search terms
- * - Window visibility management (hide empty windows)
- * - Search input event handling
- * - Integration with counter updates
- * - Search state management
+ * - Real-time tab filtering based on search terms (title, URL matching)
+ * - Intelligent window visibility management (hide windows with no visible tabs)
+ * - Search input event handling with performance optimization
+ * - Integration with counter updates for accurate statistics
+ * - Search state management and persistence
+ * - Case-insensitive and flexible matching algorithms
  *
- * Benefits:
- * - Centralized search logic
- * - Consistent filtering across all views
- * - Optimized search performance
- * - Easy to extend with advanced search features
+ * Performance features:
+ * - Efficient DOM filtering without re-rendering
+ * - Optimized search algorithms for large tab collections
+ * - Debounced counter updates for smooth UX
+ * - Smart window grouping visibility logic
+ *
+ * @class SearchEngine
+ * @since 0.1.0
+ *
+ * @example
+ * const searchEngine = new SearchEngine();
+ * searchEngine.initialize(searchInput, updateCounterCallback);
+ * searchEngine.performSearch('github');
  */
 class SearchEngine {
+	/**
+	 * Create a new SearchEngine instance
+	 *
+	 * Initializes the search engine with default state. Search input and callback
+	 * are configured during initialization for clean separation of concerns.
+	 *
+	 * @since 0.1.0
+	 */
 	constructor() {
+		/** @private */
 		this.searchInput = null;
+		/** @private */
 		this.updateCounterCallback = null;
+		/** @private */
 		this.lastSearchTerm = '';
 	}
 
 	/**
 	 * Initialize the search engine with required dependencies
-	 * @param {HTMLElement} searchInput - Search input element
-	 * @param {Function} updateCounterCallback - Callback to update counters
+	 *
+	 * Must be called before performing searches to establish DOM references
+	 * and callback functions. Sets up real-time event listeners.
+	 *
+	 * @param {HTMLElement} searchInput - Search input DOM element
+	 * @param {Function} updateCounterCallback - Callback to update tab counters
+	 * @since 0.1.0
+	 *
+	 * @example
+	 * searchEngine.initialize(
+	 *   document.getElementById('searchInput'),
+	 *   (current, all) => updateCounters(current, all)
+	 * );
 	 */
 	initialize(searchInput, updateCounterCallback) {
 		this.searchInput = searchInput;
@@ -40,6 +82,12 @@ class SearchEngine {
 
 	/**
 	 * Setup event listeners for search functionality
+	 *
+	 * Attaches real-time search listeners to the search input element.
+	 * Provides immediate visual feedback as user types.
+	 *
+	 * @private
+	 * @since 0.1.0
 	 */
 	setupEventListeners() {
 		if (!this.searchInput) {
