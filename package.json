@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/bluet/tab-count.git"
+    "url": "git+ssh://git@github.com/bluet/tab-duke.git"
   },
   "keywords": [
     "tab",
@@ -26,9 +26,9 @@
   "author": "BlueT - Matthew Lien <bluet@bluet.org>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/bluet/tab-count/issues"
+    "url": "https://github.com/bluet/tab-duke/issues"
   },
-  "homepage": "https://github.com/bluet/tab-count#readme",
+  "homepage": "https://github.com/bluet/tab-duke#readme",
   "dependencies": {
     "baseline-browser-mapping": "^2.9.7",
     "caniuse-lite": "^1.0.30001760"

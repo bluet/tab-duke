@@ -239,5 +239,53 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 	});
 });
 
+// Populate feedback template with system information
+async function populateFeedbackTemplate() {
+	// Get Chrome version
+	const chromeVersionElement = document.getElementById("chromeVersion");
+	if (chromeVersionElement) {
+		const userAgent = navigator.userAgent;
+		const chromeVersionMatch = userAgent.match(/Chrome\/([0-9.]+)/);
+		const chromeVersion = chromeVersionMatch ? chromeVersionMatch[1] : "Unknown";
+		chromeVersionElement.textContent = chromeVersion;
+	}
 
+	// Get extension version from manifest
+	const extensionVersionElement = document.getElementById("extensionVersion");
+	if (extensionVersionElement) {
+		try {
+			const manifest = chrome.runtime.getManifest();
+			extensionVersionElement.textContent = manifest.version;
+		} catch (error) {
+			console.error("Failed to get extension version:", error);
+			extensionVersionElement.textContent = "Unknown";
+		}
+	}
 
+	// Get current tab and window counts from storage (reuse existing data)
+	const data = await chrome.storage.local.get(["windowsCount", "allWindowsTabsCount"]);
+	const { windowsCount, allWindowsTabsCount } = data;
+
+	const feedbackTabsElement = document.getElementById("feedbackTabsCount");
+	const feedbackWindowsElement = document.getElementById("feedbackWindowsCount");
+
+	if (feedbackTabsElement) {
+		feedbackTabsElement.textContent = allWindowsTabsCount || "Unknown";
+	}
+	if (feedbackWindowsElement) {
+		feedbackWindowsElement.textContent = windowsCount || "Unknown";
+	}
+}
+
+// Initialize feedback template when page loads
+document.addEventListener("DOMContentLoaded", () => {
+	setTimeout(populateFeedbackTemplate, 100); // Small delay to ensure storage data is loaded
+});
+
+// Update feedback template when counts are refreshed
+const originalRefreshButton = document.getElementById("refreshButton");
+if (originalRefreshButton) {
+	originalRefreshButton.addEventListener("click", () => {
+		setTimeout(populateFeedbackTemplate, 500); // Delay to allow page reload and data loading
+	});
+}

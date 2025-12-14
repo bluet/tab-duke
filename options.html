@@ -43,6 +43,34 @@
   <input type="button" id="scanDuplicateTabsButton" value="Scan Duplicate Tabs">
   <input type="button" id="autoSelectButton" value="Auto-Select Duplicates">
   <input type="button" id="bulkCloseButton" value="Bulk Close">
+
+  <hr>
+  <h3>Help & Feedback</h3>
+  <p>Having issues or suggestions? We'd love to hear from you!</p>
+  <p>
+    <strong>Report Issues:</strong>
+    <a href="https://github.com/bluet/tab-duke/issues/new" target="_blank" rel="noopener noreferrer" id="reportIssueLink">
+      🐛 Report Bug or Request Feature
+    </a>
+  </p>
+  <p>
+    <strong>View Known Issues:</strong>
+    <a href="https://github.com/bluet/tab-duke/issues" target="_blank" rel="noopener noreferrer" id="viewIssuesLink">
+      📋 Browse All Issues
+    </a>
+  </p>
+  <p style="font-size: 0.9em; color: #666;">
+    <strong>Performance Feedback:</strong> If you're using 500+ tabs or 10+ windows,
+    your feedback is especially valuable for improving extreme-scale performance.
+  </p>
+  <div style="background-color: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px;">
+    <strong>Quick Bug Report Template:</strong><br>
+    • Chrome Version: <span id="chromeVersion">Detecting...</span><br>
+    • Extension Version: <span id="extensionVersion">Loading...</span><br>
+    • Tab Count: <span id="feedbackTabsCount">-</span><br>
+    • Windows Count: <span id="feedbackWindowsCount">-</span><br>
+    Include this info when reporting issues for faster diagnosis.
+  </div>
 </body>
 
 <script src="options.js"></script>
