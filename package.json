@@ -5,10 +5,13 @@
   "devDependencies": {
     "@babel/eslint-parser": "^7.23.3",
     "eslint": "^8.55.0",
-    "prettier-eslint": "^16.1.2"
+    "prettier-eslint": "^16.1.2",
+    "tailwindcss": "^3.4.19"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build-css": "npx tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.min.css --minify",
+    "watch-css": "npx tailwindcss -i ./src/tailwind.css -o ./dist/tailwind.min.css --watch"
   },
   "repository": {
     "type": "git",
@@ -24,5 +27,9 @@
   "bugs": {
     "url": "https://github.com/bluet/tab-count/issues"
   },
-  "homepage": "https://github.com/bluet/tab-count#readme"
+  "homepage": "https://github.com/bluet/tab-count#readme",
+  "dependencies": {
+    "baseline-browser-mapping": "^2.9.7",
+    "caniuse-lite": "^1.0.30001760"
+  }
 }

@@ -122,15 +122,17 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 	// Create a table to display the duplicate tabs
 	const table = document.createElement("table");
 	table.id = "duplicateTabsTable";
-	table.innerHTML = `
-	    <tr>
-		<th></th>
-		<th>Favicon</th>
-		<th>Title</th>
-		<th>Window Index</th>
-		<th>Action</th>
-	    </tr>
-	`;
+	// SECURITY: Use safe DOM creation instead of innerHTML to prevent XSS
+	const headerRow = document.createElement("tr");
+
+	const headers = ["", "Favicon", "Title", "Window Index", "Action"];
+	headers.forEach(headerText => {
+		const th = document.createElement("th");
+		th.textContent = headerText;
+		headerRow.appendChild(th);
+	});
+
+	table.appendChild(headerRow);
 
 	for (let [url, tabs] of urlTabMap) {
 		if (tabs.length > 1) {
@@ -148,7 +150,13 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 				// Add favicon
 				const faviconCell = document.createElement("td");
 				const favicon = document.createElement("img");
-				favicon.src = tab.favIconUrl;
+				// SECURITY: Validate favicon URL to prevent XSS via data: URLs or malicious schemes
+				if (tab.favIconUrl && (tab.favIconUrl.startsWith('http://') || tab.favIconUrl.startsWith('https://') || tab.favIconUrl.startsWith('chrome://'))) {
+					favicon.src = tab.favIconUrl;
+				} else {
+					// Use default icon for invalid or missing favicons
+					favicon.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRkZGIi8+Cjx0ZXh0IHg9IjgiIHk9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+8J+MkDwvdGV4dD4KPHN2Zz4K';
+				}
 				faviconCell.appendChild(favicon);
 				row.appendChild(faviconCell);
 
