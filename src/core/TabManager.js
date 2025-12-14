@@ -10,7 +10,7 @@
  * @chrome-extension Manifest V3 compatible with chrome.tabs and chrome.windows APIs
  * @requires chrome.tabs - Full Chrome tabs API access for tab operations
  * @requires chrome.windows - Chrome windows API for window management
- * @chrome-permissions tabs, activeTab - Required for tab access and manipulation
+ * @chrome-permissions tabs - Required for tab access and manipulation
  * @performance Optimized for extreme tab usage (1300+ tabs across 30+ windows)
  * @error-handling Comprehensive Chrome API error handling with fallback strategies
  * @imports {ChromeTabExtended, ChromeWindowExtended, TabCloseResults, ChromeExtensionError} from '../types/TabDukeTypes.js'

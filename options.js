@@ -150,12 +150,12 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 				// Add favicon
 				const faviconCell = document.createElement("td");
 				const favicon = document.createElement("img");
-				// SECURITY: Validate favicon URL to prevent XSS via data: URLs or malicious schemes
-				if (tab.favIconUrl && (tab.favIconUrl.startsWith('http://') || tab.favIconUrl.startsWith('https://') || tab.favIconUrl.startsWith('chrome://'))) {
+				// SECURITY: Use centralized favicon validator for consistency with TabRenderer
+				if (window.isSafeFaviconUrlGlobal && window.isSafeFaviconUrlGlobal(tab.favIconUrl)) {
 					favicon.src = tab.favIconUrl;
 				} else {
 					// Use default icon for invalid or missing favicons
-					favicon.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRkZGIi8+Cjx0ZXh0IHg9IjgiIHk9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+8J+MkDwvdGV4dD4KPHN2Zz4K';
+					favicon.src = window.getDefaultFaviconUrlGlobal ? window.getDefaultFaviconUrlGlobal() : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRkZGIi8+Cjx0ZXh0IHg9IjgiIHk9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+8J+MkDwvdGV4dD4KPHN2Zz4K';
 				}
 				faviconCell.appendChild(favicon);
 				row.appendChild(faviconCell);
@@ -270,10 +270,10 @@ async function populateFeedbackTemplate() {
 	const feedbackWindowsElement = document.getElementById("feedbackWindowsCount");
 
 	if (feedbackTabsElement) {
-		feedbackTabsElement.textContent = allWindowsTabsCount || "Unknown";
+		feedbackTabsElement.textContent = allWindowsTabsCount ?? "Unknown";
 	}
 	if (feedbackWindowsElement) {
-		feedbackWindowsElement.textContent = windowsCount || "Unknown";
+		feedbackWindowsElement.textContent = windowsCount ?? "Unknown";
 	}
 }
 
@@ -282,10 +282,5 @@ document.addEventListener("DOMContentLoaded", () => {
 	setTimeout(populateFeedbackTemplate, 100); // Small delay to ensure storage data is loaded
 });
 
-// Update feedback template when counts are refreshed
-const originalRefreshButton = document.getElementById("refreshButton");
-if (originalRefreshButton) {
-	originalRefreshButton.addEventListener("click", () => {
-		setTimeout(populateFeedbackTemplate, 500); // Delay to allow page reload and data loading
-	});
-}
+// Feedback template is automatically populated on page load via DOMContentLoaded event
+// No need for additional refresh button handling since page reloads

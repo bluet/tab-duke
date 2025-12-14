@@ -20,6 +20,7 @@ async function updateBadgeText () {
 			// show the tabs count in current window
 			const currentWindowTabs = await chrome.tabs.query({ "currentWindow": true });
 			chrome.action.setBadgeText({ "text": String(currentWindowTabs.length) });
+			updateBadgeTitle(currentWindowTabs.length);
 		} else if (displayOption === "windowsCount") {
 			// show the windows count
 			chrome.action.setBadgeText({ "text": String(windowsCount) });
@@ -54,34 +55,46 @@ function displayResults (window_list) {
 	updateBadgeText();
 }
 
-function registerTabDedupeHandler () {
+function registerTabDedupeHandler() {
 	chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 		if (changeInfo.url) {
 			try {
 				const tabs = await chrome.tabs.query({ "url": changeInfo.url });
 				if (tabs.length === 2 && changeInfo.url !== "chrome://newtab/") {
 					const oldTab = tabs[0].id === tabId ? tabs[1] : tabs[0];
-					const dedupe = confirm("Duplicate tab detected. Switch to existing open tab?");
-					if (dedupe) {
-						chrome.tabs.update(oldTab.id, { "active": true }, () => {
-							if (chrome.runtime.lastError) {
-								console.error('Failed to switch to existing tab during dedupe:', chrome.runtime.lastError.message);
-								return; // Don't continue with window focus if tab switch failed
-							}
-							chrome.windows.update(oldTab.windowId, { "focused": true }, () => {
-								if (chrome.runtime.lastError) {
-									console.error('Failed to focus window during dedupe:', chrome.runtime.lastError.message);
-									return; // Don't remove duplicate tab if window focus failed
-								}
-								chrome.tabs.remove(tabId, () => {
-									if (chrome.runtime.lastError) {
-										console.error('Failed to remove duplicate tab:', chrome.runtime.lastError.message);
-										// Tab removal failed, but user was already switched to existing tab
-									}
-								});
-							});
-						});
+
+					// Check for existing notification for this URL to prevent spam
+					const urlKey = `pending_dedupe_url_${encodeURIComponent(changeInfo.url)}`;
+					const { [urlKey]: existingNotification } = await chrome.storage.local.get([urlKey]);
+
+					if (existingNotification) {
+						console.log('TabDuke: Skipping duplicate notification for URL:', changeInfo.url);
+						return;
 					}
+
+					// Create notification instead of confirm() - CRITICAL MV3 FIX
+					const notificationId = `dedupe-${tabId}-${oldTab.id}`;
+					await chrome.notifications.create(notificationId, {
+						type: 'basic',
+						iconUrl: 'images/icon48.png',
+						title: 'Duplicate Tab Detected',
+						message: `Switch to existing "${oldTab.title}" tab?`,
+						buttons: [
+							{ title: 'Switch & Close Duplicate' },
+							{ title: 'Keep Both Tabs' }
+						]
+					});
+
+					// Store context for notification click handler AND track pending URL
+					await chrome.storage.local.set({
+						[`dedupe_${notificationId}`]: {
+							newTabId: tabId,
+							oldTabId: oldTab.id,
+							oldWindowId: oldTab.windowId,
+							url: changeInfo.url // Store URL for cleanup
+						},
+						[urlKey]: { notificationId, timestamp: Date.now() }
+					});
 				}
 			} catch (error) {
 				console.error('Failed to query tabs for deduplication:', error.message);
@@ -89,6 +102,92 @@ function registerTabDedupeHandler () {
 			}
 		}
 	});
+
+	// Handle notification responses
+	chrome.notifications.onButtonClicked.addListener(async (notificationId, buttonIndex) => {
+		if (notificationId.startsWith('dedupe-')) {
+			const contextKey = `dedupe_${notificationId}`;
+			const { [contextKey]: context } = await chrome.storage.local.get([contextKey]);
+
+			if (context && buttonIndex === 0) { // Switch & Close Duplicate
+				try {
+					// Switch to existing tab
+					await chrome.tabs.update(context.oldTabId, { active: true });
+					await chrome.windows.update(context.oldWindowId, { focused: true });
+
+					// Close duplicate tab
+					await chrome.tabs.remove(context.newTabId);
+				} catch (error) {
+					console.error('Failed to handle tab dedupe:', error.message);
+				}
+			}
+
+			// Cleanup context and URL tracking
+			if (context && context.url) {
+				const urlKey = `pending_dedupe_url_${encodeURIComponent(context.url)}`;
+				await chrome.storage.local.remove([contextKey, urlKey]);
+			} else {
+				await chrome.storage.local.remove([contextKey]);
+			}
+			await chrome.notifications.clear(notificationId);
+		}
+	});
+
+	// Auto-clear notifications after 10 seconds
+	chrome.notifications.onClosed.addListener(async (notificationId) => {
+		if (notificationId.startsWith('dedupe-')) {
+			const contextKey = `dedupe_${notificationId}`;
+			const { [contextKey]: context } = await chrome.storage.local.get([contextKey]);
+
+			// Cleanup context and URL tracking
+			if (context && context.url) {
+				const urlKey = `pending_dedupe_url_${encodeURIComponent(context.url)}`;
+				await chrome.storage.local.remove([contextKey, urlKey]);
+			} else {
+				await chrome.storage.local.remove([contextKey]);
+			}
+		}
+	});
+
+	// Setup periodic cleanup for orphaned dedupe contexts (service worker termination safety)
+	chrome.alarms.create("dedupeContextCleanup", { periodInMinutes: 30 });
+	chrome.alarms.onAlarm.addListener(async (alarm) => {
+		if (alarm.name === "dedupeContextCleanup") {
+			await cleanupOrphanedDedupeContexts();
+		}
+	});
+}
+
+/**
+ * Clean up orphaned dedupe contexts that may persist after service worker termination
+ * Removes dedupe contexts older than 10 minutes and their associated URL locks
+ */
+async function cleanupOrphanedDedupeContexts() {
+	try {
+		const storage = await chrome.storage.local.get(null);
+		const currentTime = Date.now();
+		const orphanedKeys = [];
+
+		for (const [key, value] of Object.entries(storage)) {
+			// Clean up pending URL locks older than 10 minutes
+			if (key.startsWith('pending_dedupe_url_') && value.timestamp) {
+				if (currentTime - value.timestamp > 10 * 60 * 1000) {
+					orphanedKeys.push(key);
+				}
+			}
+			// Clean up dedupe contexts without checking timestamp (notification should have cleared them)
+			else if (key.startsWith('dedupe_dedupe-')) {
+				orphanedKeys.push(key);
+			}
+		}
+
+		if (orphanedKeys.length > 0) {
+			await chrome.storage.local.remove(orphanedKeys);
+			console.log(`TabDuke: Cleaned up ${orphanedKeys.length} orphaned dedupe contexts`);
+		}
+	} catch (error) {
+		console.error('TabDuke: Failed to cleanup orphaned dedupe contexts:', error.message);
+	}
 }
 
 // Use chrome.alarms instead of setInterval

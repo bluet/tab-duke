@@ -38,6 +38,9 @@
  * renderer.initialize(tabClickHandler);
  * renderer.renderTabs(allTabs, currentWindowId);
  */
+
+import { isSafeFaviconUrl as validateFaviconUrl, getDefaultFaviconUrl } from '../utils/FaviconValidator.js';
+
 class TabRenderer {
 	/**
 	 * Create a new TabRenderer instance
@@ -281,7 +284,7 @@ class TabRenderer {
 		if (faviconUrl && this.isSafeFaviconUrl(faviconUrl)) {
 			favicon.src = faviconUrl;
 		} else {
-			favicon.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRkZGIi8+Cjx0ZXh0IHg9IjgiIHk9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiIgZmlsbD0iIzk5OSI+8J+MkDwvdGV4dD4KPHN2Zz4K";
+			favicon.src = getDefaultFaviconUrl();
 			favicon.classList.add("favicon-broken");
 		}
 
@@ -294,20 +297,8 @@ class TabRenderer {
 	}
 
 	isSafeFaviconUrl(url) {
-		try {
-			const parsed = new URL(url);
-			const allowedProtocols = ["http:", "https:", "chrome:", "data:"];
-			if (!allowedProtocols.includes(parsed.protocol)) {
-				return false;
-			}
-			if (parsed.protocol === "data:") {
-				return url.startsWith("data:image/");
-			}
-			return true;
-		} catch (error) {
-			console.error("TabRenderer: Invalid favicon URL skipped:", error.message);
-			return false;
-		}
+		// Delegate to centralized favicon validator for consistency
+		return validateFaviconUrl(url);
 	}
 
 	/**

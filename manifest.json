@@ -35,7 +35,8 @@
     "tabs",
     "windows",
     "storage",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
   "content_security_policy": {
     "extension_pages": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http: https: chrome:; font-src 'self';"
