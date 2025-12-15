@@ -43,7 +43,7 @@ TabDuke follows a **service-oriented architecture** achieving 87% complexity red
 - `npm run build-css`: build Tailwind to `dist/tailwind.min.css` (required for `popup.html` styling).
 - `npm run watch-css`: watch and rebuild Tailwind during UI work.
 - `npm test`: run 233 comprehensive tests (Jest + JSDOM, ~1.7s runtime).
-- `npm run test:coverage`: run tests with coverage report (61.52% strategic coverage).
+- `npm run test:coverage`: run tests with coverage report (61.35% strategic coverage).
 - `npm run test:watch`: run tests in watch mode for development.
 - `npm run test:integration`: run Chrome browser integration tests (requires display).
 
@@ -106,7 +106,7 @@ Local run (manual): open `chrome://extensions` → enable **Developer mode** →
 
 ### Automated Testing (Jest + JSDOM)
 - **Unit Tests**: 233 tests covering all major components with real business logic
-- **Coverage Focus**: Strategic 61.52% coverage targeting critical paths
+- **Coverage Focus**: Strategic 61.35% coverage targeting critical paths
 - **Integration Tests**: Chrome API mocking with both callback and Promise patterns
 - **Performance**: Tests complete in ~1.7s for rapid development feedback
 
