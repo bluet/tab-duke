@@ -198,45 +198,50 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 
 	// Append the table to the body of the options page
 	document.body.appendChild(table);
+});
 
-	// "auto-select" button
-	document.getElementById("autoSelectButton").addEventListener("click", () => {
-		const checkboxes = Array.from(table.querySelectorAll("input[type='checkbox']"));
-		const urlCheckboxMap = new Map();
+// "auto-select" button - Fixed: Moved outside scan handler to prevent duplicate listeners
+document.getElementById("autoSelectButton").addEventListener("click", () => {
+	const table = document.getElementById("duplicateTabsTable");
+	if (!table) return; // No table exists yet
 
-		for (let checkbox of checkboxes) {
-			const url = checkbox.parentElement.parentElement.title;
-			if (!urlCheckboxMap.has(url)) {
-				urlCheckboxMap.set(url, []);
-			}
-			urlCheckboxMap.get(url).push(checkbox);
+	const checkboxes = Array.from(table.querySelectorAll("input[type='checkbox']"));
+	const urlCheckboxMap = new Map();
+
+	for (let checkbox of checkboxes) {
+		const url = checkbox.parentElement.parentElement.title;
+		if (!urlCheckboxMap.has(url)) {
+			urlCheckboxMap.set(url, []);
 		}
+		urlCheckboxMap.get(url).push(checkbox);
+	}
 
-		for (let [url, urlCheckboxes] of urlCheckboxMap) {
-			if (urlCheckboxes.length > 1) {
-				for (let i = 1; i < urlCheckboxes.length; i++) {
-					urlCheckboxes[i].checked = true;
-				}
-			}
-		}
-	});
-
-
-	// "bulk close" button
-	document.getElementById("bulkCloseButton").addEventListener("click", () => {
-		const checkboxes = table.querySelectorAll("input[type='checkbox']");
-		for (let checkbox of checkboxes) {
-			if (checkbox.checked) {
-				chrome.tabs.remove(parseInt(checkbox.value));
-				checkbox.parentElement.parentElement.remove(); // Remove the row from the table
+	for (let [url, urlCheckboxes] of urlCheckboxMap) {
+		if (urlCheckboxes.length > 1) {
+			for (let i = 1; i < urlCheckboxes.length; i++) {
+				urlCheckboxes[i].checked = true;
 			}
 		}
+	}
+});
 
-		const existingTable = document.getElementById("duplicateTabsTable");
-		if (existingTable) {
-			existingTable.remove();
+// "bulk close" button - Fixed: Moved outside scan handler to prevent duplicate listeners
+document.getElementById("bulkCloseButton").addEventListener("click", () => {
+	const table = document.getElementById("duplicateTabsTable");
+	if (!table) return; // No table exists yet
+
+	const checkboxes = table.querySelectorAll("input[type='checkbox']");
+	for (let checkbox of checkboxes) {
+		if (checkbox.checked) {
+			chrome.tabs.remove(parseInt(checkbox.value));
+			checkbox.parentElement.parentElement.remove(); // Remove the row from the table
 		}
-	});
+	}
+
+	const existingTable = document.getElementById("duplicateTabsTable");
+	if (existingTable) {
+		existingTable.remove();
+	}
 });
 
 // Populate feedback template with system information

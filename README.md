@@ -81,8 +81,8 @@ TabDuke comes with a pre-configured keyboard shortcut `Alt+Z` (or `Command+Z` on
   - set timer to wake up
 - notifications
   - to show duplicate tab detection alerts with user action options (instead of blocking dialogs in service worker)
-- host_permissions
-  - Read and query the sensitive tab properties (URL, title, and favIconUrl) using `chrome.tabs` API.
+- windows
+  - to manage and query window information
 
 ## Refs
 

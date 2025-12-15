@@ -108,8 +108,8 @@ class TabRenderer {
 		// Setup event delegation (only once)
 		this.setupEventDelegation();
 
-		// Focus active tab
-		this.focusActiveTab(items, tabContentCurrent, tabContentAll);
+		// Focus active tab - prioritize current window
+		this.focusActiveTab(items, currentWindowId, tabContentCurrent, tabContentAll);
 	}
 
 	/**
@@ -374,15 +374,27 @@ class TabRenderer {
 	}
 
 	/**
-	 * Focus the active tab after rendering
+	 * Focus the active tab after rendering - prioritizes current window
+	 *
+	 * Fixed: Now matches popup.js logic to find active tab from CURRENT window first,
+	 * then falls back to any active tab. This prevents focusing tabs from other windows
+	 * in multi-window scenarios.
+	 *
 	 * @param {chrome.tabs.Tab[]} items - Array of tab objects
+	 * @param {number} currentWindowId - ID of the current browser window
 	 * @param {HTMLElement} tabContentCurrent - Current tab container
 	 * @param {HTMLElement} tabContentAll - All tabs container
 	 */
-	focusActiveTab(items, tabContentCurrent, tabContentAll) {
-		const activeTab = items.find(item => item.active);
+	focusActiveTab(items, currentWindowId, tabContentCurrent, tabContentAll) {
+		// CRITICAL FIX: Find the active tab from the CURRENT window first (matches popup.js:81)
+		const currentWindowActiveTab = items.find(tab => tab.active && tab.windowId === currentWindowId);
+		const fallbackActiveTab = items.find(tab => tab.active);
+
+		const activeTab = currentWindowActiveTab || fallbackActiveTab;
+
 		if (activeTab) {
 			setTimeout(() => {
+				// Prioritize current window container, then check all windows
 				const activeItem = tabContentCurrent.querySelector('.tab-active') ||
 				                 tabContentAll.querySelector('.tab-active');
 				if (activeItem) {

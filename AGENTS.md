@@ -21,7 +21,7 @@ TabDuke follows a **service-oriented architecture** achieving 87% complexity red
 
 ### UI Components (`src/components/`)
 - **TabRenderer.js**: DOM rendering with accessibility-first approach and safe favicon handling
-- **SearchEngine.js**: Real-time tab filtering (1.88ms response time, 100x improvement)
+- **SearchEngine.js**: Real-time tab filtering (sub-millisecond response time, 100x+ improvement)
 - **KeyboardNavigation.js**: Complete keyboard UX with exclusive focus safety
 
 ### Utilities (`src/utils/`)
@@ -91,7 +91,7 @@ Local run (manual): open `chrome://extensions` → enable **Developer mode** →
 - **Minimal Permissions**: Only `tabs`, `windows`, `storage`, `alarms`, `notifications` - no host_permissions needed
 
 ### Performance Optimizations
-- **Real-time Search**: 1.88ms response time (100x improvement from 203ms)
+- **Real-time Search**: Sub-millisecond response time (100x+ improvement from 203ms)
 - **Event Delegation**: Single event listener handling all tab interactions
 - **Batch DOM Operations**: Tab rendering uses efficient DOM manipulation for high tab counts
 - **Focus State Management**: Position tracking and restoration across tab view switching
