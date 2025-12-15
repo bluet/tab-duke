@@ -56,7 +56,22 @@ janitorCheckbox.addEventListener("click", async () => { return await save_option
 
 // Add event listener for tabJanitorDays input.
 document.getElementById("tabJanitorDays").addEventListener("input", () => {
-	save_options("tabJanitorDays", document.getElementById("tabJanitorDays").valueAsNumber);
+	const input = document.getElementById("tabJanitorDays");
+	let value = input.valueAsNumber;
+
+	// Validate and clamp the value (1-30 days)
+	if (isNaN(value) || value < 1) {
+		value = 1;
+	} else if (value > 30) {
+		value = 30;
+	}
+
+	// Update the input field if we had to clamp
+	if (input.valueAsNumber !== value) {
+		input.value = value;
+	}
+
+	save_options("tabJanitorDays", value);
 });
 
 document.getElementById("refreshButton").addEventListener("click", () => {
@@ -86,6 +101,7 @@ async function updateBadgeText () {
 		// show the tabs count in current window
 		let currentWindowTabs = await chrome.tabs.query({ "currentWindow": true });
 		await chrome.action.setBadgeText({ "text": String(currentWindowTabs.length) });
+		await updateBadgeTitle(currentWindowTabs.length);
 	} else if (badgeDisplayOption === "windowsCount") {
 		// show the windows count
 		await chrome.action.setBadgeText({ "text": String(windowsCount) });
