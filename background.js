@@ -74,16 +74,32 @@ function registerTabDedupeHandler() {
 
 					// Create notification instead of confirm() - CRITICAL MV3 FIX
 					const notificationId = `dedupe-${tabId}-${oldTab.id}`;
-					await chrome.notifications.create(notificationId, {
-						type: 'basic',
-						iconUrl: 'images/icon48.png',
-						title: 'Duplicate Tab Detected',
-						message: `Switch to existing "${oldTab.title}" tab?`,
-						buttons: [
-							{ title: 'Switch & Close Duplicate' },
-							{ title: 'Keep Both Tabs' }
-						]
-					});
+
+					try {
+						await chrome.notifications.create(notificationId, {
+							type: 'basic',
+							iconUrl: 'images/icon48.png',
+							title: 'Duplicate Tab Detected',
+							message: `Switch to existing "${oldTab.title}" tab?`,
+							buttons: [
+								{ title: 'Switch & Close Duplicate' },
+								{ title: 'Keep Both Tabs' }
+							]
+						});
+					} catch (notificationError) {
+						console.log('TabDuke: Notifications blocked by user, using direct deduplication fallback');
+						// Fallback: directly switch to existing tab and close duplicate
+						try {
+							await chrome.tabs.update(oldTab.id, { active: true });
+							await chrome.windows.update(oldTab.windowId, { focused: true });
+							await chrome.tabs.remove(tabId);
+							console.log('TabDuke: Auto-deduplicated tabs due to blocked notifications');
+							return; // Skip storage context creation
+						} catch (fallbackError) {
+							console.error('TabDuke: Fallback deduplication failed:', fallbackError.message);
+							return; // Give up gracefully
+						}
+					}
 
 					// Store context for notification click handler AND track pending URL
 					await chrome.storage.local.set({
@@ -225,7 +241,11 @@ async function init () {
 	chrome.tabs.onCreated.addListener(() => {return getAllStats(displayResults);});
 
 	// Action taken when a tab is closed.
-	chrome.tabs.onRemoved.addListener(() => {return getAllStats(displayResults);});
+	chrome.tabs.onRemoved.addListener((tabId) => {
+		// Clean up activation history to prevent memory leak
+		delete tab_activation_history[tabId];
+		return getAllStats(displayResults);
+	});
 
 	// Action taken when a new window is opened
 	chrome.windows.onCreated.addListener(() => {return getAllStats(displayResults);});

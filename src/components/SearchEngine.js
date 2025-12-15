@@ -176,9 +176,9 @@ class SearchEngine {
 			return true; // Empty search shows all items
 		}
 
-		// Search in the text content of the item
+		// Search in the text content of the item - FIXED: case-insensitive search
 		const text = item.textContent.toLowerCase();
-		return text.includes(searchTerm);
+		return text.includes(searchTerm.toLowerCase());
 	}
 
 	/**
