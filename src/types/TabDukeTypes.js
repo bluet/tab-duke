@@ -246,21 +246,18 @@
  */
 
 /**
- * Export types for IDE integration
- * These exports help IDEs provide better IntelliSense and type checking
+ * JSDoc Type Definitions for TabDuke
+ *
+ * NOTE: JSDoc @typedef types cannot be exported in JavaScript modules.
+ * These type definitions are available globally within the project for:
+ * - IDE IntelliSense and autocomplete
+ * - Type checking with tools that understand JSDoc
+ * - Documentation generation
+ *
+ * To use these types in other files, reference them in JSDoc comments:
+ * @example
+ * // @param {ChromeTabExtended} tab - Extended Chrome tab object
+ * // @returns {Promise<TabCloseResults>} Results of close operation
  */
-export {
-    ChromeTabExtended,
-    ChromeWindowExtended,
-    NavigationContext,
-    FocusRestoreData,
-    TabFocusData,
-    VisibleItemResult,
-    TabCloseResults,
-    TabCloseError,
-    SearchState,
-    KeyboardEventContext,
-    AccessibilityState,
-    PerformanceMetrics,
-    ChromeExtensionError
-};
+
+// No exports needed - JSDoc types are globally available in the project
