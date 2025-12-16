@@ -189,17 +189,7 @@ body {
   box-shadow: 0 0 0 1px #1d4ed8 inset;
 }
 
-/* Multi-select warning state styling */
-.search-bar.warning-state {
-  border-color: #f56565 !important;
-  background-color: #fff5f5 !important;
-  color: #c53030 !important;
-}
-
-.search-bar.warning-state::placeholder {
-  color: #c53030 !important;
-  font-weight: 500;
-}
+/* Multi-select warning state styling - REMOVED: Now using dedicated banner instead of hijacking search input */
 
 /* Screen reader only content - Phase 4 Accessibility */
 .sr-only {

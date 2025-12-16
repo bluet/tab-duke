@@ -145,7 +145,6 @@ describe('StateManager Unit Tests - Real Implementation', () => {
         });
 
         test('should initialize with correct default state', () => {
-            expect(stateManager.multiSelectWarningActive).toBe(false);
             expect(stateManager.lastClickedIndex).toBe(-1);
         });
 
@@ -334,37 +333,6 @@ describe('StateManager Unit Tests - Real Implementation', () => {
         });
     });
 
-    describe('Multi-Select Warning System', () => {
-        test('should show multi-select warning', () => {
-            const count = 5;
-
-            stateManager.showMultiSelectWarning(count);
-
-            expect(mockSearchInput.placeholder).toBe(`⚠️ ${count} tabs selected - Use Delete to close all, Escape to cancel`);
-            expect(mockSearchInput.classList.contains('warning-state')).toBe(true);
-            expect(stateManager.multiSelectWarningActive).toBe(true);
-        });
-
-        test('should clear multi-select warning', () => {
-            // First show warning
-            stateManager.showMultiSelectWarning(3);
-
-            // Then clear it
-            stateManager.clearMultiSelectWarning();
-
-            expect(stateManager.multiSelectWarningActive).toBe(false);
-            expect(mockSearchInput.classList.contains('warning-state')).toBe(false);
-            expect(mockSearchInput.placeholder).toBe('Search tabs...');
-        });
-
-        test('should return warning active state correctly', () => {
-            expect(stateManager.isMultiSelectWarningActive()).toBe(false);
-
-            stateManager.showMultiSelectWarning(2);
-
-            expect(stateManager.isMultiSelectWarningActive()).toBe(true);
-        });
-    });
 
     describe('Enter Navigation with Multi-Select Logic', () => {
         test('should handle Enter from search input', () => {
@@ -393,13 +361,23 @@ describe('StateManager Unit Tests - Real Implementation', () => {
             );
         });
 
-        test('should show multi-select warning when multiple items selected', () => {
+        test('should show confirm dialog when multiple items selected', () => {
             const mockEvent = { key: 'Enter' };
 
             // Add selected items
             const items = [...mockCurrentWindow.querySelectorAll('.list-item')];
             items[0].classList.add('selected');
             items[1].classList.add('selected');
+
+            // Set up focused item with title (matching TabRenderer structure)
+            const mockTitleDiv = document.createElement('div');
+            mockTitleDiv.className = 'truncated';
+            const mockTitleSpan = document.createElement('span');
+            mockTitleSpan.textContent = 'GitHub';
+            mockTitleDiv.appendChild(mockTitleSpan);
+            items[0].appendChild(mockTitleDiv);
+            items[0].tabid = 123;
+            items[0].windowId = 456;
 
             const mockContext = {
                 items: items,
@@ -412,11 +390,24 @@ describe('StateManager Unit Tests - Real Implementation', () => {
                 configurable: true
             });
 
-            jest.spyOn(stateManager, 'showMultiSelectWarning');
+            mockFocusManager.getCurrentItemIndex.mockReturnValue(0);
+
+            // Mock confirm() to test both accept and cancel paths
+            const mockConfirm = jest.spyOn(window, 'confirm').mockReturnValue(true);
 
             stateManager.handleEnterNavigation(mockEvent, mockContext);
 
-            expect(stateManager.showMultiSelectWarning).toHaveBeenCalledWith(2);
+            expect(mockConfirm).toHaveBeenCalledWith('⚠️ Unable to open 2 selected tabs at once.\nDo you mean to open focused "GitHub"?');
+            expect(mockTabManager.switchToTab).toHaveBeenCalledWith(123, 456);
+
+            // Test cancel path
+            mockConfirm.mockReturnValue(false);
+            mockTabManager.switchToTab.mockClear();
+
+            stateManager.handleEnterNavigation(mockEvent, mockContext);
+            expect(mockTabManager.switchToTab).not.toHaveBeenCalled();
+
+            mockConfirm.mockRestore();
         });
 
         test('should perform normal navigation when single item focused', () => {
@@ -445,17 +436,32 @@ describe('StateManager Unit Tests - Real Implementation', () => {
     });
 
     describe('Escape Sequence Context-Aware Behavior', () => {
-        test('should clear multi-select warning first in escape sequence', () => {
+        test('should clear selections when escape pressed in list context', () => {
             const mockEvent = { preventDefault: jest.fn() };
+
+            // Add selected items
+            const items = [...mockCurrentWindow.querySelectorAll('.list-item')];
+            items[0].classList.add('selected', 'bg-blue-100');
+            items[1].classList.add('selected', 'bg-blue-100');
+
             const mockContext = { activeTabContent: mockCurrentWindow };
 
-            stateManager.multiSelectWarningActive = true;
+            // Set focus away from search input (list context)
+            Object.defineProperty(document, 'activeElement', {
+                get: () => document.body,
+                configurable: true
+            });
 
-            jest.spyOn(stateManager, 'clearMultiSelectWarning');
+            stateManager.searchInput.value = '';
 
             stateManager.handleEscapeSequence(mockEvent, mockContext);
 
-            expect(stateManager.clearMultiSelectWarning).toHaveBeenCalled();
+            // Should clear selections
+            expect(items[0].classList.contains('selected')).toBe(false);
+            expect(items[0].classList.contains('bg-blue-100')).toBe(false);
+            expect(items[1].classList.contains('selected')).toBe(false);
+            expect(items[1].classList.contains('bg-blue-100')).toBe(false);
+            expect(mockEvent.preventDefault).toHaveBeenCalled();
         });
 
         test('should clear search text when focus in search with text', () => {
@@ -587,7 +593,6 @@ describe('StateManager Unit Tests - Real Implementation', () => {
             }).toThrow('FocusManager failure');
 
             // StateManager state should remain consistent
-            expect(stateManager.multiSelectWarningActive).toBe(false);
             expect(stateManager.lastClickedIndex).toBe(-1);
         });
     });

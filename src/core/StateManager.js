@@ -50,7 +50,6 @@ class StateManager {
 		this.accessibilityHelpers = accessibilityHelpers;
 
 		// State variables
-		this.multiSelectWarningActive = false;
 		this.lastClickedIndex = -1; // For shift+click range selection
 
 		// DOM references
@@ -314,11 +313,11 @@ class StateManager {
 	}
 
 	/**
-	 * Handle Enter navigation with multi-select warning system
+	 * Handle Enter navigation with multi-select confirmation
 	 *
 	 * Handles Enter key behavior with context awareness. From search input,
-	 * navigates to first visible item. From list, implements multi-select warning
-	 * system to prevent accidental navigation when multiple tabs are selected.
+	 * navigates to first visible item. From list with multiple selections,
+	 * shows confirmation dialog before navigating to focused item.
 	 *
 	 * @param {KeyboardEvent} e - Keyboard event (Enter key)
 	 * @param {NavigationContext} context - Navigation context with active tab content
@@ -327,7 +326,7 @@ class StateManager {
 	 * @example
 	 * // User presses Enter with multiple tabs selected
 	 * stateManager.handleEnterNavigation(event, context);
-	 * // Shows warning instead of navigating
+	 * // Shows confirm dialog: "⚠️ Unable to open 3 selected tabs at once.\nDo you mean to open focused 'GitHub'?"
 	 */
 	handleEnterNavigation(e, context) {
 		if (this.searchInput === document.activeElement) {
@@ -340,15 +339,27 @@ class StateManager {
 			// From list: handle multi-select warning system
 			const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
 
-			if (selectedItems.length > 1 && !this.multiSelectWarningActive) {
-				this.showMultiSelectWarning(selectedItems.length);
-			} else if (this.multiSelectWarningActive) {
-				this.clearMultiSelectWarning();
-			} else {
-				// Normal navigation
+			if (selectedItems.length > 1) {
+				// Show blocking confirmation dialog for multi-select + Enter
 				const currentIndex = this.focusManager.getCurrentItemIndex();
 				const currentItem = context.items[currentIndex];
-				this.tabManager.switchToTab(currentItem.tabid, currentItem.windowId);
+
+				if (currentItem) {
+					const tabTitle = currentItem.querySelector('.truncated span')?.textContent || 'this tab';
+					const confirmed = confirm(`⚠️ Unable to open ${selectedItems.length} selected tabs at once.\nDo you mean to open focused "${tabTitle}"?`);
+
+					if (confirmed) {
+						this.tabManager.switchToTab(currentItem.tabid, currentItem.windowId);
+					}
+					// If canceled, do nothing - selections remain intact
+				}
+			} else {
+				// Normal navigation for single/no selection
+				const currentIndex = this.focusManager.getCurrentItemIndex();
+				const currentItem = context.items[currentIndex];
+				if (currentItem) {
+					this.tabManager.switchToTab(currentItem.tabid, currentItem.windowId);
+				}
 			}
 		}
 	}
@@ -372,9 +383,6 @@ class StateManager {
 	 * // 4th press: Allow popup close
 	 */
 	handleEscapeSequence(e, context) {
-		// Priority 1: Always clear multi-select warning first
-		this.clearMultiSelectWarning();
-
 		const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
 		const searchHasText = this.searchInput.value !== "";
 		const focusInSearch = this.searchInput === document.activeElement;
@@ -592,51 +600,6 @@ class StateManager {
 
 	// Helper methods for complex state operations
 
-	/**
-	 * Show multi-select warning
-	 *
-	 * Displays a warning message when user attempts navigation with multiple
-	 * selected items. Updates search input placeholder and styling to indicate
-	 * warning state. Auto-clears after 5 seconds.
-	 *
-	 * @param {number} count - Number of selected items triggering the warning
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Show warning for 5 selected tabs
-	 * stateManager.showMultiSelectWarning(5);
-	 * // Displays: "⚠️ 5 tabs selected - Use Delete to close all, Escape to cancel"
-	 */
-	showMultiSelectWarning(count) {
-		this.searchInput.placeholder = `⚠️ ${count} tabs selected - Use Delete to close all, Escape to cancel`;
-		this.searchInput.classList.add('warning-state');
-		this.multiSelectWarningActive = true;
-
-		setTimeout(() => {
-			this.clearMultiSelectWarning();
-		}, 5000);
-	}
-
-	/**
-	 * Clear multi-select warning
-	 *
-	 * Removes the multi-select warning state and restores normal search input
-	 * appearance. Resets placeholder text and removes warning styling.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Clear any active multi-select warning
-	 * stateManager.clearMultiSelectWarning();
-	 */
-	clearMultiSelectWarning() {
-		if (this.multiSelectWarningActive) {
-			this.multiSelectWarningActive = false;
-			this.searchInput.classList.remove('warning-state');
-			// Restore original placeholder (would need to be stored)
-			this.searchInput.placeholder = "Search tabs...";
-		}
-	}
 
 	/**
 	 * Clear all selections
@@ -700,24 +663,6 @@ class StateManager {
 		// FocusManager is the single source of truth
 	}
 
-	/**
-	 * Check if multi-select warning is active
-	 *
-	 * Returns the current state of the multi-select warning system.
-	 * Used to determine if warning is currently displayed to user.
-	 *
-	 * @returns {boolean} True if multi-select warning is currently active
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Check if warning is active before showing another warning
-	 * if (!stateManager.isMultiSelectWarningActive()) {
-	 *   stateManager.showMultiSelectWarning(count);
-	 * }
-	 */
-	isMultiSelectWarningActive() {
-		return this.multiSelectWarningActive;
-	}
 }
 
 export default StateManager;
