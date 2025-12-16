@@ -218,6 +218,7 @@ export default class ChromeAPI {
 		});
 	}
 
+
 	// === Runtime API ===
 
 	/**

@@ -15,9 +15,9 @@
   <p>Not just a tab man, not just a tab count, but a Tab Duke!</p>
   <h4>Badge Display Options</h4>
   <form id="popupOptionsForm">
-    <label><input type="radio" id="defaultPopupSelection" name="tabCountRadios" value="currentWindow">Show "tabs count
+    <label><input type="radio" name="tabCountRadios" value="currentWindow">Show "tabs count
       in current window" on extension badge<br></label>
-    <label><input type="radio" name="tabCountRadios" value="allWindows">Show "tabs count in all windows" on extension
+    <label><input type="radio" id="defaultPopupSelection" name="tabCountRadios" value="allWindows">Show "tabs count in all windows" on extension
       badge<br></label>
     <label><input type="radio" name="tabCountRadios" value="windowsCount">Show "windows count" on extension
       badge<br></label>
@@ -74,6 +74,6 @@
 </body>
 
 <script src="src/utils/FaviconValidatorGlobal.js"></script>
-<script src="options.js"></script>
+<script type="module" src="options.js"></script>
 
 </html>

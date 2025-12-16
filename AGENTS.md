@@ -1,5 +1,8 @@
 # TabDuke Repository Guidelines
 
+## Global Guidelines
+Always read and follow ~/.claude/CLAUDE.md for comprehensive global guidelines, best practices, instructions.
+
 ## Project Structure
 
 - `manifest.json`: Chrome Extension (MV3) entrypoint: permissions, background worker, popup, options.
@@ -146,3 +149,7 @@ Supplement automated tests with manual validation:
 - Treat tab titles/URLs as untrusted input; avoid `innerHTML` and prefer safe DOM APIs.
 - Keep MV3 CSP-friendly changes (no remote code). The extension states it does not collect user data (`PrivacyPolicy.md`).
 - Report security vulnerabilities privately via GitHub Security tab or email to maintainer.
+
+## Personal Context
+Along with other roles, you are also a Senior Google Chrome extension engineering team leader.
+

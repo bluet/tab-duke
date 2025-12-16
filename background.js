@@ -202,16 +202,15 @@ async function updateBadgeText () {
 	}
 }
 
-// count all tabs in all windows
-function getAllStats (callback) {
-	chrome.windows.getAll({ "populate": true }, (windows) => {
-		if (chrome.runtime.lastError) {
-			console.error('Failed to get all windows stats:', chrome.runtime.lastError.message);
-			callback([]); // Return empty array on error
-			return;
-		}
-		callback(windows || []);
-	});
+// count all tabs in all windows - MODERNIZED: async/await instead of callback
+async function getAllStats () {
+	try {
+		const windows = await ChromeAPI.getAllWindows({ "populate": true });
+		await displayResults(windows || []);
+	} catch (error) {
+		console.error('Failed to get all windows stats:', error.message);
+		await displayResults([]); // Empty array on error
+	}
 }
 
 async function displayResults (window_list) {
@@ -221,8 +220,9 @@ async function displayResults (window_list) {
 		"windowsCount": window_list.length,
 		"allWindowsTabsCount": allWindowsTabCount
 	});
-	updateBadgeText();
+	await updateBadgeText();
 }
+
 
 // FIXED: Global Tab Dedupe handler - registered only once to prevent duplicate listeners
 async function handleTabUpdate(tabId, changeInfo, tab) {
@@ -233,8 +233,8 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 
 	if (changeInfo.url) {
 		try {
-			const tabs = await chrome.tabs.query({ "url": changeInfo.url });
-			if (tabs.length === 2 && changeInfo.url !== "chrome://newtab/") {
+			const tabs = await ChromeAPI.queryTabs({ "url": changeInfo.url });
+			if (tabs.length >= 2 && changeInfo.url !== "chrome://newtab/") {
 				const oldTab = tabs[0].id === tabId ? tabs[1] : tabs[0];
 
 				// Check for existing notification for this URL to prevent spam
@@ -242,7 +242,6 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 				const { [urlKey]: existingNotification } = await ChromeAPI.getStorage([urlKey]);
 
 				if (existingNotification) {
-					console.log('TabDuke: Skipping duplicate notification for URL:', changeInfo.url);
 					return;
 				}
 
@@ -250,6 +249,9 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 				const notificationId = `dedupe-${tabId}-${oldTab.id}`;
 
 				try {
+					// Check notification permission first
+					const permissionLevel = await chrome.notifications.getPermissionLevel();
+
 					await chrome.notifications.create(notificationId, {
 						type: 'basic',
 						iconUrl: 'images/icon48.png',
@@ -264,10 +266,9 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 					console.log('TabDuke: Notifications blocked by user, using direct deduplication fallback');
 					// Fallback: directly switch to existing tab and close duplicate
 					try {
-						await chrome.tabs.update(oldTab.id, { active: true });
-						await chrome.windows.update(oldTab.windowId, { focused: true });
-						await chrome.tabs.remove(tabId);
-						console.log('TabDuke: Auto-deduplicated tabs due to blocked notifications');
+						await ChromeAPI.updateTab(oldTab.id, { active: true });
+						await ChromeAPI.focusWindow(oldTab.windowId);
+						await ChromeAPI.removeTabs(tabId);
 						return; // Skip storage context creation
 					} catch (fallbackError) {
 						console.error('TabDuke: Fallback deduplication failed:', fallbackError.message);
@@ -287,7 +288,7 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 				});
 			}
 		} catch (error) {
-			console.error('Failed to query tabs for deduplication:', error.message);
+			console.error('TabDuke: Failed to query tabs for deduplication:', error.message);
 			// Skip deduplication on error - tab will remain as is
 		}
 	}
@@ -298,13 +299,11 @@ let tabDedupeListenerRegistered = false;
 
 function registerTabDedupeHandler() {
 	if (tabDedupeListenerRegistered) {
-		console.log('Tab Dedupe: Handler already registered, skipping duplicate registration');
 		return;
 	}
 
 	chrome.tabs.onUpdated.addListener(handleTabUpdate);
 	tabDedupeListenerRegistered = true;
-	console.log('Tab Dedupe: Handler registered successfully');
 }
 
 /**
@@ -367,17 +366,17 @@ async function handleTabJanitorAlarm() {
 		const daysSinceActive = (now - ts) / (1000 * 60 * 60 * 24);
 		if (daysSinceActive > validatedDays) {
 			console.log(`Tab Janitor: Removing inactive tab ${tabId} (inactive for ${daysSinceActive.toFixed(1)} days)`);
-			chrome.tabs.remove(parseInt(tabId), async () => {
-				if (chrome.runtime.lastError) {
-					console.error(`Failed to remove inactive tab ${tabId}:`, chrome.runtime.lastError.message);
-					// Tab might have been already closed or invalid - clean up history anyway
-					await removeTabFromHistory(tabId);
-				} else {
-					// Successfully removed tab, clean up persistent history
-					await removeTabFromHistory(tabId);
-					console.log(`Tab Janitor: Successfully removed tab ${tabId} and cleaned history`);
-				}
-			});
+			try {
+				// MODERNIZED: Use ChromeAPI wrapper with async/await instead of callback
+				await ChromeAPI.removeTabs(parseInt(tabId));
+				// Successfully removed tab, clean up persistent history
+				await removeTabFromHistory(tabId);
+				console.log(`Tab Janitor: Successfully removed tab ${tabId} and cleaned history`);
+			} catch (error) {
+				console.error(`Failed to remove inactive tab ${tabId}:`, error.message);
+				// Tab might have been already closed or invalid - clean up history anyway
+				await removeTabFromHistory(tabId);
+			}
 		}
 	}
 }
@@ -405,28 +404,28 @@ async function init () {
 		// FIXED: Set initial timestamp for newly created tabs to ensure Tab Janitor tracking
 		await setTabActivationTimestamp(tab.id);
 		console.log(`Initial timestamp set for new tab ${tab.id}`);
-		return getAllStats(displayResults);
+		return getAllStats();
 	});
 
 	// Action taken when a tab is closed.
 	chrome.tabs.onRemoved.addListener(async (tabId) => {
 		// Clean up persistent activation history to prevent storage bloat
 		await removeTabFromHistory(tabId);
-		return getAllStats(displayResults);
+		return getAllStats();
 	});
 
 	// Action taken when a new window is opened
-	chrome.windows.onCreated.addListener(() => {return getAllStats(displayResults);});
+	chrome.windows.onCreated.addListener(() => {return getAllStats();});
 
 	// Action taken when a windows is closed.
-	chrome.windows.onRemoved.addListener(() => {return getAllStats(displayResults);});
+	chrome.windows.onRemoved.addListener(() => {return getAllStats();});
 
 	// to change badge text on switching current tab
 	chrome.windows.onFocusChanged.addListener(async () => {
 		// only if the badgeDisplayOption is set to "currentWindow"
 		const { "badgeDisplayOption": displayOption } = await ChromeAPI.getStorage(["badgeDisplayOption"]);
 		if (displayOption === "currentWindow") {
-			updateBadgeText();
+			await updateBadgeText();
 		}
 	});
 
@@ -448,11 +447,11 @@ async function init () {
 			if (context && buttonIndex === 0) { // Switch & Close Duplicate
 				try {
 					// Switch to existing tab
-					await chrome.tabs.update(context.oldTabId, { active: true });
-					await chrome.windows.update(context.oldWindowId, { focused: true });
+					await ChromeAPI.updateTab(context.oldTabId, { active: true });
+					await ChromeAPI.focusWindow(context.oldWindowId);
 
 					// Close duplicate tab
-					await chrome.tabs.remove(context.newTabId);
+					await ChromeAPI.removeTabs(context.newTabId);
 				} catch (error) {
 					console.error('Failed to handle tab dedupe:', error.message);
 				}
@@ -492,12 +491,12 @@ async function init () {
 	}
 
 	// Initialize the stats to start off with.
-	getAllStats(displayResults);
+	getAllStats();
 
 	// CRITICAL: Initialize activation history for existing tabs after service worker restart
 	// This ensures tab janitor works correctly across service worker restarts
 	try {
-		const tabs = await chrome.tabs.query({});
+		const tabs = await ChromeAPI.queryTabs({});
 		const history = await getTabActivationHistory();
 		let newTabsFound = 0;
 
@@ -528,12 +527,11 @@ async function init () {
 	}
 
 	// CRITICAL: Listen for settings changes to enable/disable features dynamically
-	chrome.storage.onChanged.addListener((changes, namespace) => {
+	chrome.storage.onChanged.addListener(async (changes, namespace) => {
 		if (namespace !== 'local') return;
 
 		// Handle tabDedupe setting changes
 		if ('tabDedupe' in changes) {
-			console.log(`Tab Dedupe setting changed: ${changes.tabDedupe.oldValue} → ${changes.tabDedupe.newValue}`);
 			// PERFORMANCE: Update cached setting to avoid storage reads on tab updates
 			cachedTabDedupeEnabled = Boolean(changes.tabDedupe.newValue);
 
@@ -575,6 +573,13 @@ async function init () {
 					console.log(`Tab Janitor reconfigured with ${changes.tabJanitorDays.newValue} days`);
 				}
 			});
+		}
+
+		// Handle badgeDisplayOption setting changes
+		if ('badgeDisplayOption' in changes) {
+			console.log(`Badge Display Option changed: ${changes.badgeDisplayOption.oldValue} → ${changes.badgeDisplayOption.newValue}`);
+			// Update badge immediately when setting changes
+			await updateBadgeText();
 		}
 	});
 }

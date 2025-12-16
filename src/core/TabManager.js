@@ -221,48 +221,6 @@ class TabManager {
 		return await ChromeAPI.queryTabs({});
 	}
 
-	/**
-	 * Remove tab items from DOM lists (both current and all windows views)
-	 *
-	 * Removes the corresponding DOM elements for a tab from both the current window
-	 * and all windows tab lists. Used after successful tab closure.
-	 *
-	 * @param {number} tabID - Tab ID to remove from lists
-	 * @throws {Error} Logs error if tabID is missing
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // After closing a tab
-	 * await tabManager.closeTab(123);
-	 * tabManager.removeFromLists(123); // Clean up DOM
-	 */
-	removeFromLists(tabID) {
-		if (!tabID) {
-			console.error('TabManager.removeFromLists: Missing tabID');
-			return;
-		}
-
-		const currentWindowContent = document.getElementById("currentWindow");
-		const allWindowContent = document.getElementById("allWindow");
-
-		if (currentWindowContent) {
-			const currentWindowItems = currentWindowContent.querySelectorAll(".list-item");
-			currentWindowItems.forEach((item) => {
-				if (item.tabid === tabID) {
-					item.remove();
-				}
-			});
-		}
-
-		if (allWindowContent) {
-			const allWindowItems = allWindowContent.querySelectorAll(".list-item");
-			allWindowItems.forEach((item) => {
-				if (item.tabid === tabID) {
-					item.remove();
-				}
-			});
-		}
-	}
 
 	/**
 	 * Get the currently active tab in the current window

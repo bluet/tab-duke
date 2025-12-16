@@ -228,18 +228,26 @@ describe('Background.js Unit Tests - Service Worker Implementation', () => {
     });
 
     describe('Window Statistics Functions', () => {
-        const getAllStats = (callback) => {
-            chrome.windows.getAll({ "populate": true }, (windows) => {
-                if (chrome.runtime.lastError) {
-                    console.error('Failed to get all windows stats:', chrome.runtime.lastError.message);
-                    callback([]);
-                    return;
-                }
-                callback(windows || []);
-            });
+        const getAllStats = async () => {
+            try {
+                const windows = await new Promise((resolve) => {
+                    chrome.windows.getAll({ "populate": true }, (windows) => {
+                        if (chrome.runtime.lastError) {
+                            console.error('Failed to get all windows stats:', chrome.runtime.lastError.message);
+                            resolve([]);
+                            return;
+                        }
+                        resolve(windows || []);
+                    });
+                });
+                await displayResults(windows);
+            } catch (error) {
+                console.error('Failed to get all windows stats:', error.message);
+                await displayResults([]);
+            }
         };
 
-        const displayResults = (window_list) => {
+        const displayResults = async (window_list) => {
             global.windowsCount = window_list.length;
             global.allWindowsTabCount = window_list.reduce((count, win) => {
                 return count + win.tabs.length;
@@ -251,7 +259,7 @@ describe('Background.js Unit Tests - Service Worker Implementation', () => {
             // updateBadgeText() would be called here
         };
 
-        test('getAllStats should retrieve window data successfully', (done) => {
+        test('getAllStats should retrieve window data successfully', async () => {
             const mockWindows = [
                 { tabs: [{}, {}] }, // 2 tabs
                 { tabs: [{}, {}, {}] } // 3 tabs
@@ -262,17 +270,19 @@ describe('Background.js Unit Tests - Service Worker Implementation', () => {
                 callback(mockWindows);
             });
 
-            getAllStats((windows) => {
-                expect(windows).toEqual(mockWindows);
-                expect(mockChrome.windows.getAll).toHaveBeenCalledWith(
-                    { populate: true },
-                    expect.any(Function)
-                );
-                done();
-            });
+            await getAllStats();
+
+            expect(mockChrome.windows.getAll).toHaveBeenCalledWith(
+                { populate: true },
+                expect.any(Function)
+            );
+
+            // Verify that displayResults was called by checking the side effects
+            expect(global.windowsCount).toBe(2); // 2 windows
+            expect(global.allWindowsTabCount).toBe(5); // 2 + 3 tabs
         });
 
-        test('getAllStats should handle Chrome API errors', (done) => {
+        test('getAllStats should handle Chrome API errors', async () => {
             mockChrome.runtime.lastError = { message: 'API Error' };
             mockChrome.windows.getAll.mockImplementation((options, callback) => {
                 callback(null);
@@ -281,15 +291,18 @@ describe('Background.js Unit Tests - Service Worker Implementation', () => {
             // Mute expected console.error to reduce test noise
             const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
-            getAllStats((windows) => {
-                expect(windows).toEqual([]);
-                expect(consoleErrorSpy).toHaveBeenCalledWith(
-                    'Failed to get all windows stats:',
-                    'API Error'
-                );
-                consoleErrorSpy.mockRestore();
-                done();
-            });
+            await getAllStats();
+
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                'Failed to get all windows stats:',
+                'API Error'
+            );
+
+            // Verify that displayResults was called with empty array by checking side effects
+            expect(global.windowsCount).toBe(0); // Empty array length
+            expect(global.allWindowsTabCount).toBe(0); // No tabs
+
+            consoleErrorSpy.mockRestore();
 
             // Reset runtime error
             mockChrome.runtime.lastError = null;

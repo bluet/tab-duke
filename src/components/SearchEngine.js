@@ -327,16 +327,6 @@ class SearchEngine {
 		}
 	}
 
-	/**
-	 * Search in specific fields (title, URL, etc.)
-	 * @param {string} searchTerm - Term to search for
-	 * @param {string[]} fields - Fields to search in ['title', 'url']
-	 */
-	searchInFields(searchTerm, fields = ['title', 'url']) {
-		// This would require additional data attributes on items
-		// Implementation would depend on how tab data is structured
-		console.log('Advanced field search not yet implemented');
-	}
 }
 
 export default SearchEngine;
