@@ -1,4 +1,5 @@
 // Import all service modules - Service-Oriented Architecture
+import ChromeAPI from './src/utils/ChromeAPI.js';
 import TabManager from './src/core/TabManager.js';
 import StateManager from './src/core/StateManager.js';
 import SearchEngine from './src/components/SearchEngine.js';
@@ -234,43 +235,31 @@ class TabDukeApp {
 		tabTitleCurrent.textContent = `${searchIcon}Current (${currentVisibleCount})`;
 
 		// Count windows asynchronously
-		this.tabManager.getCurrentWindow().then(() => {
-			chrome.windows.getAll({}, (window_list) => {
-				if (chrome.runtime.lastError) {
-					console.error('Failed to get window list for counter:', chrome.runtime.lastError.message);
-					tabTitleAll.textContent = `${searchIcon}All (${allVisibleCount})`;
-					return;
-				}
-
-				let visibleWindowCount = window_list ? window_list.length : 0;
-				if (isSearching) {
-					const windows = allWindowContent.querySelectorAll(".window");
-					visibleWindowCount = Array.from(windows).filter(w => w.style.display !== "none").length;
-				}
-				tabTitleAll.textContent = `${searchIcon}All (${allVisibleCount} in ${visibleWindowCount})`;
-			});
+		this.tabManager.getCurrentWindow().then(async () => {
+			const window_list = await ChromeAPI.getAllWindows({});
+			let visibleWindowCount = window_list ? window_list.length : 0;
+			if (isSearching) {
+				const windows = allWindowContent.querySelectorAll(".window");
+				visibleWindowCount = Array.from(windows).filter(w => w.style.display !== "none").length;
+			}
+			tabTitleAll.textContent = `${searchIcon}All (${allVisibleCount} in ${visibleWindowCount})`;
 		});
 	}
 
 	// Keyboard shortcut banner functionality
 	async checkKeyboardShortcut() {
-		const { shortcutBannerDismissed } = await chrome.storage.local.get(['shortcutBannerDismissed']);
+		const { shortcutBannerDismissed } = await ChromeAPI.getStorage(['shortcutBannerDismissed']);
 		if (shortcutBannerDismissed) return;
 
-		chrome.commands.getAll((commands) => {
-			if (chrome.runtime.lastError) {
-				console.error('Failed to get commands for shortcut check:', chrome.runtime.lastError.message);
-				return;
-			}
-			const actionCommand = commands ? commands.find(cmd => cmd.name === '_execute_action') : null;
+		const commands = await ChromeAPI.getCommands();
+		const actionCommand = commands ? commands.find(cmd => cmd.name === '_execute_action') : null;
 
-			if (!actionCommand || !actionCommand.shortcut) {
-				const banner = document.getElementById('shortcutBanner');
-				if (banner) {
-					banner.classList.remove('hidden');
-				}
+		if (!actionCommand || !actionCommand.shortcut) {
+			const banner = document.getElementById('shortcutBanner');
+			if (banner) {
+				banner.classList.remove('hidden');
 			}
-		});
+		}
 	}
 
 	setupShortcutBanner() {
@@ -278,12 +267,8 @@ class TabDukeApp {
 		const dismissBtn = document.getElementById('dismissBannerBtn');
 
 		if (openBtn) {
-			openBtn.addEventListener('click', () => {
-				chrome.tabs.create({ url: 'chrome://extensions/shortcuts' }, (tab) => {
-					if (chrome.runtime.lastError) {
-						console.error('Failed to open shortcuts page:', chrome.runtime.lastError.message);
-					}
-				});
+			openBtn.addEventListener('click', async () => {
+				await ChromeAPI.createTab({ url: 'chrome://extensions/shortcuts' });
 			});
 		}
 
@@ -293,7 +278,7 @@ class TabDukeApp {
 				if (banner) {
 					banner.classList.add('hidden');
 				}
-				await chrome.storage.local.set({ shortcutBannerDismissed: true });
+				await ChromeAPI.setStorage({ shortcutBannerDismissed: true });
 			});
 		}
 	}

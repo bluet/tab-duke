@@ -1,9 +1,11 @@
+import ChromeAPI from './src/utils/ChromeAPI.js';
+
 // Save options to localstorage
 async function save_options (type, value) {
 	console.log(`type: ${type}, value: ${value}`);
 	let data = {};
 	data[type] = value;
-	await chrome.storage.local.set(data);
+	await ChromeAPI.setStorage(data);
 
 	// Update selection status
 	const status = document.getElementById("status");
@@ -16,7 +18,7 @@ async function save_options (type, value) {
 
 // Restore selection from localstorage
 async function restore_options () {
-	const data = await chrome.storage.local.get(["badgeDisplayOption", "tabDedupe", "tabJanitor", "tabJanitorDays"]);
+	const data = await ChromeAPI.getStorage(["badgeDisplayOption", "tabDedupe", "tabJanitor", "tabJanitorDays"]);
 	const { badgeDisplayOption, tabDedupe, tabJanitor, tabJanitorDays } = data;
 
 	// restore options for popupDisplay
@@ -79,7 +81,7 @@ document.getElementById("refreshButton").addEventListener("click", () => {
 });
 
 async function updateCounts () {
-	const data = await chrome.storage.local.get(["windowsCount", "allWindowsTabsCount"]);
+	const data = await ChromeAPI.getStorage(["windowsCount", "allWindowsTabsCount"]);
 	const { windowsCount, allWindowsTabsCount } = data;
 
 	document.getElementById("windowsCount").textContent = windowsCount;
@@ -90,21 +92,21 @@ updateCounts();
 
 // set icon text on badge
 async function updateBadgeText () {
-	const { badgeDisplayOption } = await chrome.storage.local.get(["badgeDisplayOption"]);
-	const data = await chrome.storage.local.get(["windowsCount", "allWindowsTabsCount"]);
+	const { badgeDisplayOption } = await ChromeAPI.getStorage(["badgeDisplayOption"]);
+	const data = await ChromeAPI.getStorage(["windowsCount", "allWindowsTabsCount"]);
 	const { windowsCount, allWindowsTabsCount } = data;
 	if (!badgeDisplayOption || badgeDisplayOption === "allWindows") {
 		// show the tabs count in all windows
-		await chrome.action.setBadgeText({ "text": String(allWindowsTabsCount) });
+		await ChromeAPI.setBadgeText(String(allWindowsTabsCount));
 		await updateBadgeTitle(allWindowsTabsCount);
 	} else if (badgeDisplayOption === "currentWindow") {
 		// show the tabs count in current window
-		let currentWindowTabs = await chrome.tabs.query({ "currentWindow": true });
-		await chrome.action.setBadgeText({ "text": String(currentWindowTabs.length) });
+		let currentWindowTabs = await ChromeAPI.queryTabs({ "currentWindow": true });
+		await ChromeAPI.setBadgeText(String(currentWindowTabs.length));
 		await updateBadgeTitle(currentWindowTabs.length);
 	} else if (badgeDisplayOption === "windowsCount") {
 		// show the windows count
-		await chrome.action.setBadgeText({ "text": String(windowsCount) });
+		await ChromeAPI.setBadgeText(String(windowsCount));
 		await updateBadgeTitle(windowsCount);
 	}
 }
@@ -112,14 +114,14 @@ async function updateBadgeText () {
 // set icon's tooltip
 async function updateBadgeTitle (count) {
 	const iconTitle = `You have ${count} open tab(s)/window(s).`;
-	await chrome.action.setTitle({ "title": iconTitle });
+	await ChromeAPI.setBadgeTitle(iconTitle);
 }
 
 
 // find duplicate tabs
 document.getElementById("scanDuplicateTabsButton").addEventListener("click", async () => {
-	const tabs = await chrome.tabs.query({});
-	const windows = await chrome.windows.getAll({});
+	const tabs = await ChromeAPI.queryTabs({});
+	const windows = await ChromeAPI.getAllWindows();
 	const urlTabMap = new Map();
 
 	for (let tab of tabs) {
@@ -191,8 +193,8 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 				const actionCell = document.createElement("td");
 				const closeButton = document.createElement("button");
 				closeButton.textContent = "Close Tab";
-				closeButton.addEventListener("click", () => {
-					chrome.tabs.remove(tab.id);
+				closeButton.addEventListener("click", async () => {
+					await ChromeAPI.removeTabs(tab.id);
 					row.remove(); // Remove the row from the table
 				});
 				actionCell.appendChild(closeButton);
@@ -202,9 +204,9 @@ document.getElementById("scanDuplicateTabsButton").addEventListener("click", asy
 				row.title = tab.url;
 
 				// Add a click event listener to switch to the tab
-				row.addEventListener("dblclick", () => {
-					chrome.tabs.update(tab.id, { "active": true });
-					chrome.windows.update(tab.windowId, { "focused": true });
+				row.addEventListener("dblclick", async () => {
+					await ChromeAPI.updateTab(tab.id, { "active": true });
+					await ChromeAPI.focusWindow(tab.windowId);
 				});
 
 				table.appendChild(row);
@@ -242,14 +244,14 @@ document.getElementById("autoSelectButton").addEventListener("click", () => {
 });
 
 // "bulk close" button - Fixed: Moved outside scan handler to prevent duplicate listeners
-document.getElementById("bulkCloseButton").addEventListener("click", () => {
+document.getElementById("bulkCloseButton").addEventListener("click", async () => {
 	const table = document.getElementById("duplicateTabsTable");
 	if (!table) return; // No table exists yet
 
 	const checkboxes = table.querySelectorAll("input[type='checkbox']");
 	for (let checkbox of checkboxes) {
 		if (checkbox.checked) {
-			chrome.tabs.remove(parseInt(checkbox.value));
+			await ChromeAPI.removeTabs(parseInt(checkbox.value));
 			checkbox.parentElement.parentElement.remove(); // Remove the row from the table
 		}
 	}
@@ -275,7 +277,7 @@ async function populateFeedbackTemplate() {
 	const extensionVersionElement = document.getElementById("extensionVersion");
 	if (extensionVersionElement) {
 		try {
-			const manifest = chrome.runtime.getManifest();
+			const manifest = ChromeAPI.getManifest();
 			extensionVersionElement.textContent = manifest.version;
 		} catch (error) {
 			console.error("Failed to get extension version:", error);
@@ -284,7 +286,7 @@ async function populateFeedbackTemplate() {
 	}
 
 	// Get current tab and window counts from storage (reuse existing data)
-	const data = await chrome.storage.local.get(["windowsCount", "allWindowsTabsCount"]);
+	const data = await ChromeAPI.getStorage(["windowsCount", "allWindowsTabsCount"]);
 	const { windowsCount, allWindowsTabsCount } = data;
 
 	const feedbackTabsElement = document.getElementById("feedbackTabsCount");

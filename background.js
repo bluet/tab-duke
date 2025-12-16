@@ -1,3 +1,6 @@
+// Import centralized ChromeAPI to eliminate code duplication and ensure consistency
+import ChromeAPI from './src/utils/ChromeAPI.js';
+
 let windowsCount = 0;
 let allWindowsTabCount = 0;
 // CRITICAL MV3 FIX: Tab activation history must be persistent across service worker restarts
@@ -6,54 +9,196 @@ let allWindowsTabCount = 0;
 // PERFORMANCE: Cache frequently accessed settings to avoid storage I/O on every tab update
 let cachedTabDedupeEnabled = false;
 
-// Persistent tab activation history management
+// FIXED: Race-condition-safe tab activation history management
 const TAB_ACTIVATION_HISTORY_KEY = 'tab_activation_history';
 
+/**
+ * TabHistoryManager - Prevents storage race conditions with batched writes
+ *
+ * Fixes the get→mutate→set race condition by:
+ * 1. Batching multiple updates into single atomic operations
+ * 2. Debouncing writes to reduce storage I/O pressure
+ * 3. Using individual keys for concurrent-safe operations
+ */
+class TabHistoryManager {
+	constructor() {
+		this.pendingWrites = new Map(); // tabId -> timestamp
+		this.pendingDeletes = new Set(); // tabId set
+		this.flushTimer = null;
+		this.isFlushingWrites = false;
+
+		// Batch flush after 500ms of inactivity to balance responsiveness vs efficiency
+		this.FLUSH_DELAY_MS = 500;
+	}
+
+	/**
+	 * Set tab activation timestamp (race-condition safe)
+	 * @param {number} tabId - Tab ID to update
+	 * @param {number} timestamp - Activation timestamp (defaults to now)
+	 */
+	async setActivationTime(tabId, timestamp = Date.now()) {
+		// Add to pending writes and remove from pending deletes if present
+		this.pendingWrites.set(tabId, timestamp);
+		this.pendingDeletes.delete(tabId);
+
+		this.scheduleFlush();
+	}
+
+	/**
+	 * Remove tab from history (race-condition safe)
+	 * @param {number} tabId - Tab ID to remove
+	 */
+	async removeTab(tabId) {
+		// Add to pending deletes and remove from pending writes if present
+		this.pendingDeletes.add(tabId);
+		this.pendingWrites.delete(tabId);
+
+		this.scheduleFlush();
+	}
+
+	/**
+	 * Get current tab activation history (includes pending changes)
+	 * @returns {Object} Tab activation history
+	 */
+	async getHistory() {
+		const stored = await ChromeAPI.getStorage([TAB_ACTIVATION_HISTORY_KEY]);
+		const history = { ...(stored[TAB_ACTIVATION_HISTORY_KEY] || {}) };
+
+		// Apply pending writes
+		for (const [tabId, timestamp] of this.pendingWrites.entries()) {
+			history[tabId] = timestamp;
+		}
+
+		// Apply pending deletes
+		for (const tabId of this.pendingDeletes) {
+			delete history[tabId];
+		}
+
+		return history;
+	}
+
+	/**
+	 * Schedule a batched flush operation (debounced)
+	 */
+	scheduleFlush() {
+		if (this.flushTimer) {
+			clearTimeout(this.flushTimer);
+		}
+
+		this.flushTimer = setTimeout(() => {
+			this.flushPendingChanges();
+		}, this.FLUSH_DELAY_MS);
+	}
+
+	/**
+	 * Flush all pending changes to storage atomically
+	 */
+	async flushPendingChanges() {
+		if (this.isFlushingWrites || (this.pendingWrites.size === 0 && this.pendingDeletes.size === 0)) {
+			return;
+		}
+
+		this.isFlushingWrites = true;
+
+		try {
+			// Get current storage state using ChromeAPI wrapper
+			const stored = await ChromeAPI.getStorage([TAB_ACTIVATION_HISTORY_KEY]);
+			const currentHistory = stored[TAB_ACTIVATION_HISTORY_KEY] || {};
+
+			// Apply all pending changes atomically
+			const updatedHistory = { ...currentHistory };
+
+			// Apply writes
+			for (const [tabId, timestamp] of this.pendingWrites.entries()) {
+				updatedHistory[tabId] = timestamp;
+			}
+
+			// Apply deletes
+			for (const tabId of this.pendingDeletes) {
+				delete updatedHistory[tabId];
+			}
+
+			// Single atomic write operation using ChromeAPI wrapper
+			const success = await ChromeAPI.setStorage({ [TAB_ACTIVATION_HISTORY_KEY]: updatedHistory });
+
+			if (success) {
+				console.log(`TabHistoryManager: Flushed ${this.pendingWrites.size} writes, ${this.pendingDeletes.size} deletes`);
+				// Clear pending operations only on successful write
+				this.pendingWrites.clear();
+				this.pendingDeletes.clear();
+				this.flushTimer = null;
+			} else {
+				throw new Error('ChromeAPI.setStorage returned false');
+			}
+
+		} catch (error) {
+			console.error('TabHistoryManager: Failed to flush changes:', error);
+			// Reschedule flush on error
+			this.scheduleFlush();
+		} finally {
+			this.isFlushingWrites = false;
+		}
+	}
+
+	/**
+	 * CRITICAL: Force flush all pending changes immediately (for service worker shutdown)
+	 * This prevents data loss when service worker is terminated during debounce window
+	 */
+	async forceFlush() {
+		if (this.flushTimer) {
+			clearTimeout(this.flushTimer);
+			this.flushTimer = null;
+		}
+		await this.flushPendingChanges();
+	}
+}
+
+// Global instance for tab history management
+const tabHistoryManager = new TabHistoryManager();
+
+// Legacy wrapper functions for backward compatibility
 async function getTabActivationHistory() {
-	const result = await chrome.storage.local.get([TAB_ACTIVATION_HISTORY_KEY]);
-	return result[TAB_ACTIVATION_HISTORY_KEY] || {};
+	return await tabHistoryManager.getHistory();
 }
 
 async function setTabActivationTimestamp(tabId, timestamp = Date.now()) {
-	const history = await getTabActivationHistory();
-	history[tabId] = timestamp;
-	await chrome.storage.local.set({ [TAB_ACTIVATION_HISTORY_KEY]: history });
+	await tabHistoryManager.setActivationTime(tabId, timestamp);
 }
 
 async function removeTabFromHistory(tabId) {
-	const history = await getTabActivationHistory();
-	delete history[tabId];
-	await chrome.storage.local.set({ [TAB_ACTIVATION_HISTORY_KEY]: history });
+	await tabHistoryManager.removeTab(tabId);
 }
 
-// set icon's tooltip
-function updateBadgeTitle (count) {
+// FIXED: Use ChromeAPI for consistent async patterns
+async function updateBadgeTitle (count) {
 	const iconTitle = `You have ${count} open tab(s).`;
-	chrome.action.setTitle({ "title": iconTitle });
+	await ChromeAPI.setBadgeTitle(iconTitle);
 }
 
-// set icon's text
+// FIXED: Use ChromeAPI for consistent async patterns and error handling
 async function updateBadgeText () {
 	try {
-		const { "badgeDisplayOption": displayOption } = await chrome.storage.local.get(["badgeDisplayOption"]);
+		const data = await ChromeAPI.getStorage(["badgeDisplayOption"]);
+		const displayOption = data.badgeDisplayOption;
+
 		if (!displayOption || displayOption === "allWindows") {
 			// show the tabs count in all windows
-			chrome.action.setBadgeText({ "text": String(allWindowsTabCount) });
-			updateBadgeTitle(allWindowsTabCount);
+			await ChromeAPI.setBadgeText(String(allWindowsTabCount));
+			await updateBadgeTitle(allWindowsTabCount);
 		} else if (displayOption === "currentWindow") {
 			// show the tabs count in current window
-			const currentWindowTabs = await chrome.tabs.query({ "currentWindow": true });
-			chrome.action.setBadgeText({ "text": String(currentWindowTabs.length) });
-			updateBadgeTitle(currentWindowTabs.length);
+			const currentWindowTabs = await ChromeAPI.queryTabs({ "currentWindow": true });
+			await ChromeAPI.setBadgeText(String(currentWindowTabs.length));
+			await updateBadgeTitle(currentWindowTabs.length);
 		} else if (displayOption === "windowsCount") {
 			// show the windows count
-			chrome.action.setBadgeText({ "text": String(windowsCount) });
-			updateBadgeTitle(windowsCount);
+			await ChromeAPI.setBadgeText(String(windowsCount));
+			await updateBadgeTitle(windowsCount);
 		}
 	} catch (error) {
 		console.error('Failed to update badge text:', error.message);
 		// Fallback: show total count from global variable
-		chrome.action.setBadgeText({ "text": String(allWindowsTabCount) });
+		await ChromeAPI.setBadgeText(String(allWindowsTabCount));
 	}
 }
 
@@ -69,10 +214,10 @@ function getAllStats (callback) {
 	});
 }
 
-function displayResults (window_list) {
+async function displayResults (window_list) {
 	windowsCount = window_list.length;
 	allWindowsTabCount = window_list.reduce((count, win) => {return count + win.tabs.length;}, 0);
-	chrome.storage.local.set({
+	await ChromeAPI.setStorage({
 		"windowsCount": window_list.length,
 		"allWindowsTabsCount": allWindowsTabCount
 	});
@@ -94,7 +239,7 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 
 				// Check for existing notification for this URL to prevent spam
 				const urlKey = `pending_dedupe_url_${encodeURIComponent(changeInfo.url)}`;
-				const { [urlKey]: existingNotification } = await chrome.storage.local.get([urlKey]);
+				const { [urlKey]: existingNotification } = await ChromeAPI.getStorage([urlKey]);
 
 				if (existingNotification) {
 					console.log('TabDuke: Skipping duplicate notification for URL:', changeInfo.url);
@@ -131,7 +276,7 @@ async function handleTabUpdate(tabId, changeInfo, tab) {
 				}
 
 				// Store context for notification click handler AND track pending URL
-				await chrome.storage.local.set({
+				await ChromeAPI.setStorage({
 					[`dedupe_${notificationId}`]: {
 						newTabId: tabId,
 						oldTabId: oldTab.id,
@@ -168,7 +313,7 @@ function registerTabDedupeHandler() {
  */
 async function cleanupOrphanedDedupeContexts() {
 	try {
-		const storage = await chrome.storage.local.get(null);
+		const storage = await ChromeAPI.getStorage(null);
 		const currentTime = Date.now();
 		const orphanedKeys = [];
 
@@ -186,7 +331,7 @@ async function cleanupOrphanedDedupeContexts() {
 		}
 
 		if (orphanedKeys.length > 0) {
-			await chrome.storage.local.remove(orphanedKeys);
+			await ChromeAPI.removeStorage(orphanedKeys);
 			console.log(`TabDuke: Cleaned up ${orphanedKeys.length} orphaned dedupe contexts`);
 		}
 	} catch (error) {
@@ -196,7 +341,7 @@ async function cleanupOrphanedDedupeContexts() {
 
 // FIXED: Global Tab Janitor alarm handler - registered only once to prevent duplicate listeners
 async function handleTabJanitorAlarm() {
-	const { tabJanitor, tabJanitorDays } = await chrome.storage.local.get(['tabJanitor', 'tabJanitorDays']);
+	const { tabJanitor, tabJanitorDays } = await ChromeAPI.getStorage(['tabJanitor', 'tabJanitorDays']);
 
 	// Skip if janitor is disabled
 	if (!tabJanitor) {
@@ -250,7 +395,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 });
 
 async function init () {
-	const { tabDedupe, tabJanitor, tabJanitorDays } = await chrome.storage.local.get(["tabDedupe", "tabJanitor", "tabJanitorDays"]);
+	const { tabDedupe, tabJanitor, tabJanitorDays } = await ChromeAPI.getStorage(["tabDedupe", "tabJanitor", "tabJanitorDays"]);
 
 	// PERFORMANCE: Initialize cached settings to avoid storage I/O on frequent events
 	cachedTabDedupeEnabled = Boolean(tabDedupe);
@@ -279,7 +424,7 @@ async function init () {
 	// to change badge text on switching current tab
 	chrome.windows.onFocusChanged.addListener(async () => {
 		// only if the badgeDisplayOption is set to "currentWindow"
-		const { "badgeDisplayOption": displayOption } = await chrome.storage.local.get(["badgeDisplayOption"]);
+		const { "badgeDisplayOption": displayOption } = await ChromeAPI.getStorage(["badgeDisplayOption"]);
 		if (displayOption === "currentWindow") {
 			updateBadgeText();
 		}
@@ -298,7 +443,7 @@ async function init () {
 	chrome.notifications.onButtonClicked.addListener(async (notificationId, buttonIndex) => {
 		if (notificationId.startsWith('dedupe-')) {
 			const contextKey = `dedupe_${notificationId}`;
-			const { [contextKey]: context } = await chrome.storage.local.get([contextKey]);
+			const { [contextKey]: context } = await ChromeAPI.getStorage([contextKey]);
 
 			if (context && buttonIndex === 0) { // Switch & Close Duplicate
 				try {
@@ -316,9 +461,9 @@ async function init () {
 			// Cleanup context and URL tracking
 			if (context && context.url) {
 				const urlKey = `pending_dedupe_url_${encodeURIComponent(context.url)}`;
-				await chrome.storage.local.remove([contextKey, urlKey]);
+				await ChromeAPI.removeStorage([contextKey, urlKey]);
 			} else {
-				await chrome.storage.local.remove([contextKey]);
+				await ChromeAPI.removeStorage([contextKey]);
 			}
 			await chrome.notifications.clear(notificationId);
 		}
@@ -328,14 +473,14 @@ async function init () {
 	chrome.notifications.onClosed.addListener(async (notificationId) => {
 		if (notificationId.startsWith('dedupe-')) {
 			const contextKey = `dedupe_${notificationId}`;
-			const { [contextKey]: context } = await chrome.storage.local.get([contextKey]);
+			const { [contextKey]: context } = await ChromeAPI.getStorage([contextKey]);
 
 			// Cleanup context and URL tracking
 			if (context && context.url) {
 				const urlKey = `pending_dedupe_url_${encodeURIComponent(context.url)}`;
-				await chrome.storage.local.remove([contextKey, urlKey]);
+				await ChromeAPI.removeStorage([contextKey, urlKey]);
 			} else {
-				await chrome.storage.local.remove([contextKey]);
+				await ChromeAPI.removeStorage([contextKey]);
 			}
 		}
 	});
@@ -422,7 +567,7 @@ async function init () {
 		// Handle tabJanitorDays setting changes (reconfigure if janitor is active)
 		if ('tabJanitorDays' in changes) {
 			console.log(`Tab Janitor Days changed: ${changes.tabJanitorDays.oldValue} → ${changes.tabJanitorDays.newValue}`);
-			chrome.storage.local.get(['tabJanitor']).then(({tabJanitor}) => {
+			ChromeAPI.getStorage(['tabJanitor']).then(({tabJanitor}) => {
 				if (tabJanitor) {
 					// Re-register alarm (days value will be read dynamically from storage)
 					chrome.alarms.clear('tabJanitor'); // Clear existing alarm
@@ -433,6 +578,27 @@ async function init () {
 		}
 	});
 }
+
+// CRITICAL: Service worker shutdown protection for TabHistoryManager
+// This prevents data loss when service worker is terminated during the debounce window
+self.addEventListener('beforeunload', async (event) => {
+	console.log('TabDuke: Service worker shutting down, flushing pending tab history');
+	try {
+		await tabHistoryManager.forceFlush();
+	} catch (error) {
+		console.error('TabDuke: Failed to flush tab history on shutdown:', error);
+	}
+});
+
+// Additional protection using Chrome extension-specific suspend event
+chrome.runtime.onSuspend?.addListener(async () => {
+	console.log('TabDuke: Extension suspending, flushing pending tab history');
+	try {
+		await tabHistoryManager.forceFlush();
+	} catch (error) {
+		console.error('TabDuke: Failed to flush tab history on suspend:', error);
+	}
+});
 
 // Global error boundary for unhandled JavaScript exceptions in background script (service worker)
 self.addEventListener('error', (error) => {

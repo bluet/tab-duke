@@ -67,7 +67,7 @@ describe('TabManager Unit Tests - Real Implementation', () => {
             const success = await tabManager.closeTab(1);
 
             expect(success).toBe(false);
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.closeTab: Failed to close tab:', 'Cannot close tab');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.removeTabs: Failed to remove tabs:', 'Cannot close tab');
         });
 
         test('should reject invalid tab IDs for close', async () => {
@@ -136,7 +136,7 @@ describe('TabManager Unit Tests - Real Implementation', () => {
             const tabs = await tabManager.getCurrentWindowTabs();
 
             expect(tabs).toEqual([]);
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.getCurrentWindowTabs: Failed to get current window tabs:', 'Query failed');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.queryTabs: Failed to query tabs:', 'Query failed');
         });
 
         test('should get all tabs across windows', async () => {
@@ -153,7 +153,7 @@ describe('TabManager Unit Tests - Real Implementation', () => {
             const tabs = await tabManager.getAllTabs();
 
             expect(tabs).toEqual([]);
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.getAllTabs: Failed to get all tabs:', 'Query failed');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.queryTabs: Failed to query tabs:', 'Query failed');
         });
     });
 
@@ -174,7 +174,7 @@ describe('TabManager Unit Tests - Real Implementation', () => {
 
             expect(tab).toBeNull();
             // Note: getActiveTab calls getCurrentWindow first, so the error comes from getCurrentWindow
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.getCurrentWindow: Failed to get current window:', 'No active tab');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.getCurrentWindow: Failed to get current window:', 'No active tab');
         });
 
         test('should get current window', async () => {
@@ -191,7 +191,7 @@ describe('TabManager Unit Tests - Real Implementation', () => {
             const window = await tabManager.getCurrentWindow();
 
             expect(window).toBeNull();
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.getCurrentWindow: Failed to get current window:', 'No current window');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.getCurrentWindow: Failed to get current window:', 'No current window');
         });
     });
 
@@ -256,8 +256,8 @@ describe('TabManager Unit Tests - Real Implementation', () => {
             expect(window2).toBeDefined();
 
             // Verify appropriate error logging occurred
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.getCurrentWindowTabs: Failed to get current window tabs:', 'API temporarily unavailable');
-            expect(consoleErrorSpy).toHaveBeenCalledWith('TabManager.getCurrentWindow: Failed to get current window:', 'API temporarily unavailable');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.queryTabs: Failed to query tabs:', 'API temporarily unavailable');
+            expect(consoleErrorSpy).toHaveBeenCalledWith('ChromeAPI.getCurrentWindow: Failed to get current window:', 'API temporarily unavailable');
         });
     });
 });

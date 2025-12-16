@@ -8,13 +8,19 @@
  * @since 0.1.0
  * @version 1.0.0
  * @chrome-extension Manifest V3 compatible with chrome.tabs and chrome.windows APIs
- * @requires chrome.tabs - Full Chrome tabs API access for tab operations
- * @requires chrome.windows - Chrome windows API for window management
+ * @requires ChromeAPI - Centralized Chrome API wrapper for consistent async patterns
+ * @requires chrome.tabs - Full Chrome tabs API access via ChromeAPI wrapper
+ * @requires chrome.windows - Chrome windows API via ChromeAPI wrapper
  * @chrome-permissions tabs - Required for tab access and manipulation
  * @performance Optimized for extreme tab usage (1300+ tabs across 30+ windows)
  * @error-handling Comprehensive Chrome API error handling with fallback strategies
  * @imports {ChromeTabExtended, ChromeWindowExtended, TabCloseResults, ChromeExtensionError} from '../types/TabDukeTypes.js'
- *
+ * @imports ChromeAPI from '../utils/ChromeAPI.js'
+ */
+
+import ChromeAPI from '../utils/ChromeAPI.js';
+
+/**
  * @example
  * // Basic usage with error handling
  * const tabManager = new TabManager();
@@ -124,16 +130,7 @@ class TabManager {
 			return false;
 		}
 
-		return new Promise((resolve) => {
-			chrome.tabs.remove(tabID, () => {
-				if (chrome.runtime.lastError) {
-					console.error('TabManager.closeTab: Failed to close tab:', chrome.runtime.lastError.message);
-					resolve(false);
-				} else {
-					resolve(true);
-				}
-			});
-		});
+		return await ChromeAPI.removeTabs(tabID);
 	}
 
 	/**
@@ -197,16 +194,7 @@ class TabManager {
 	 * });
 	 */
 	async getCurrentWindowTabs() {
-		return new Promise((resolve) => {
-			chrome.tabs.query({ "currentWindow": true }, (tabs) => {
-				if (chrome.runtime.lastError) {
-					console.error('TabManager.getCurrentWindowTabs: Failed to get current window tabs:', chrome.runtime.lastError.message);
-					resolve([]); // Return empty array on error
-					return;
-				}
-				resolve(tabs || []);
-			});
-		});
+		return await ChromeAPI.queryTabs({ "currentWindow": true });
 	}
 
 	/**
@@ -230,16 +218,7 @@ class TabManager {
 	 * }, {});
 	 */
 	async getAllTabs() {
-		return new Promise((resolve) => {
-			chrome.tabs.query({}, (tabs) => {
-				if (chrome.runtime.lastError) {
-					console.error('TabManager.getAllTabs: Failed to get all tabs:', chrome.runtime.lastError.message);
-					resolve([]); // Return empty array on error
-					return;
-				}
-				resolve(tabs || []);
-			});
-		});
+		return await ChromeAPI.queryTabs({});
 	}
 
 	/**
@@ -306,16 +285,8 @@ class TabManager {
 			const currentWindow = await this.getCurrentWindow();
 			if (!currentWindow) return null;
 
-			return new Promise((resolve) => {
-				chrome.tabs.query({ "active": true, "windowId": currentWindow.id }, (tabs) => {
-					if (chrome.runtime.lastError) {
-						console.error('TabManager.getActiveTab: Failed to get active tab:', chrome.runtime.lastError.message);
-						resolve(null);
-						return;
-					}
-					resolve(tabs && tabs.length > 0 ? tabs[0] : null);
-				});
-			});
+			const tabs = await ChromeAPI.queryTabs({ "active": true, "windowId": currentWindow.id });
+			return tabs && tabs.length > 0 ? tabs[0] : null;
 		} catch (error) {
 			console.error('TabManager.getActiveTab: Unexpected error:', error.message);
 			return null;
@@ -335,16 +306,7 @@ class TabManager {
 	 * @since 0.1.0
 	 */
 	async getCurrentWindow() {
-		return new Promise((resolve) => {
-			chrome.windows.getCurrent((currentWindow) => {
-				if (chrome.runtime.lastError) {
-					console.error('TabManager.getCurrentWindow: Failed to get current window:', chrome.runtime.lastError.message);
-					resolve(null);
-					return;
-				}
-				resolve(currentWindow);
-			});
-		});
+		return await ChromeAPI.getCurrentWindow();
 	}
 
 	/**
@@ -359,16 +321,8 @@ class TabManager {
 	 * @since 0.1.0
 	 */
 	async activateTab(tabID) {
-		return new Promise((resolve) => {
-			chrome.tabs.update(tabID, { "active": true }, () => {
-				if (chrome.runtime.lastError) {
-					console.error('TabManager.activateTab: Failed to switch to tab:', chrome.runtime.lastError.message);
-					resolve(false);
-				} else {
-					resolve(true);
-				}
-			});
-		});
+		const result = await ChromeAPI.updateTab(tabID, { "active": true });
+		return result !== null;
 	}
 
 	/**
@@ -383,16 +337,7 @@ class TabManager {
 	 * @since 0.1.0
 	 */
 	async focusWindow(windowID) {
-		return new Promise((resolve) => {
-			chrome.windows.update(windowID, { "focused": true }, () => {
-				if (chrome.runtime.lastError) {
-					console.error('TabManager.focusWindow: Failed to focus window:', chrome.runtime.lastError.message);
-					resolve(false);
-				} else {
-					resolve(true);
-				}
-			});
-		});
+		return await ChromeAPI.focusWindow(windowID);
 	}
 }
 

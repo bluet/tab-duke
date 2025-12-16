@@ -286,7 +286,7 @@ class StateManager {
 	 * @throws {chrome.runtime.lastError} When Chrome API tab closure fails
 	 * @throws {Error} When no tabs are selected or context is invalid
 	 * @performance Parallel tab closure for optimal speed with large selections
-	 * @chrome-api Uses chrome.tabs.remove() via TabManager with error handling
+	 * @chrome-api Uses ChromeAPI.removeTabs() via TabManager with error handling
 	 * @accessibility Announces closure results to screen readers
 	 * @since 0.1.0
 	 *
