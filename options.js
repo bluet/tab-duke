@@ -1,5 +1,8 @@
 import ChromeAPI from './src/utils/ChromeAPI.js';
 
+// Make ChromeAPI available globally for options-enhancements.js
+window.ChromeAPI = ChromeAPI;
+
 // Save options to localstorage
 async function save_options (type, value) {
 	let data = {};
@@ -79,13 +82,24 @@ document.addEventListener("DOMContentLoaded", () => {
 		save_options("tabJanitorDays", value);
 	});
 
-	document.getElementById("refreshButton").addEventListener("click", () => {
-		location.reload();
+	document.getElementById("refreshButton").addEventListener("click", async () => {
+		await updateCounts();
+		await populateFeedbackTemplate(); // Also refresh the feedback template data
 	});
 
 	// Initialize counts and feedback template
 	updateCounts();
 	setTimeout(populateFeedbackTemplate, 100); // Small delay to ensure storage data is loaded
+
+	// ===== INITIALIZE CLASSIC UI ENHANCEMENTS =====
+	initializeClassicInteractions();
+	synchronizeStats();
+	initializeStatusMonitoring();
+
+	// Trigger initial badge preview update
+	setTimeout(async () => {
+		await updateBadgePreviews();
+	}, 1000);
 
 	// FIXED: Move duplicate scan event listeners inside DOMContentLoaded
 	// "auto-select" button
@@ -244,17 +258,52 @@ document.addEventListener("DOMContentLoaded", () => {
 			}
 		}
 
-		// Append the table to the body of the options page
-		document.body.appendChild(table);
+		// Append the table to the dedicated duplicate results container
+		const duplicateContainer = document.getElementById("duplicateResultsContainer");
+		duplicateContainer.classList.remove("hidden");
+
+		// Clear any existing results first
+		const existingResults = duplicateContainer.querySelector("table");
+		if (existingResults) {
+			existingResults.remove();
+		}
+
+		// Table styling handled by CSS #duplicateTabsTable selector
+
+		duplicateContainer.appendChild(table);
 	});
 });
 
+// REUSE: Use the same proven logic as background.js for consistent tab counting
 async function updateCounts () {
-	const data = await ChromeAPI.getStorage(["windowsCount", "allWindowsTabsCount"]);
-	const { windowsCount, allWindowsTabsCount } = data;
+	try {
+		// CRITICAL: Use { "populate": true } to get tab data for each window (same as background.js)
+		const windows = await ChromeAPI.getAllWindows({ "populate": true });
 
-	document.getElementById("windowsCount").textContent = windowsCount;
-	document.getElementById("tabsCount").textContent = allWindowsTabsCount;
+		// Use the exact same counting logic as background.js displayResults()
+		const totalWindows = windows.length;
+		const totalTabs = windows.reduce((count, win) => count + win.tabs.length, 0);
+
+		// Update the display
+		document.getElementById("windowsCount").textContent = totalWindows;
+		document.getElementById("tabsCount").textContent = totalTabs;
+
+		// Update storage to keep everything in sync (same as background.js)
+		await ChromeAPI.setStorage({
+			"windowsCount": totalWindows,
+			"allWindowsTabsCount": totalTabs
+		});
+
+		console.log(`Options: Updated counts - ${totalWindows} windows, ${totalTabs} tabs`);
+	} catch (error) {
+		console.error("Failed to update counts:", error);
+		// Fall back to stored values if Chrome API fails
+		const data = await ChromeAPI.getStorage(["windowsCount", "allWindowsTabsCount"]);
+		const { windowsCount, allWindowsTabsCount } = data;
+
+		document.getElementById("windowsCount").textContent = windowsCount || "-";
+		document.getElementById("tabsCount").textContent = allWindowsTabsCount || "-";
+	}
 }
 
 // set icon text on badge
@@ -327,3 +376,143 @@ async function populateFeedbackTemplate() {
 
 // Feedback template is automatically populated on page load via DOMContentLoaded event
 // No need for additional refresh button handling since page reloads
+
+
+/* ===================================================================
+   TAB DUKE CLASSIC OPTIONS INTERFACE - JAVASCRIPT ENHANCEMENTS
+
+   Enhanced functionality for the classic options interface
+   CSP-compliant external JavaScript
+   =================================================================== */
+
+// ===== UI ENHANCEMENTS =====
+
+// Classic Toast System
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('statusToast');
+  const statusText = document.getElementById('statusText');
+
+  statusText.textContent = message;
+
+  // Update toast styling based on type
+  if (type === 'success') {
+    toast.style.borderLeftColor = 'var(--emerald)';
+  } else if (type === 'error') {
+    toast.style.borderLeftColor = 'var(--crimson)';
+  } else if (type === 'info') {
+    toast.style.borderLeftColor = 'var(--azure)';
+  }
+
+  toast.classList.add('show');
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+  }, 3000);
+}
+
+// Enhanced Badge Preview Updates - FIXED: Use real current window count instead of bogus estimation
+async function updateBadgePreviews() {
+  const currentWindow = document.getElementById('currentWindowBadgePreview');
+  const allWindows = document.getElementById('allWindowsBadgePreview');
+  const windowsCount = document.getElementById('windowsCountBadgePreview');
+
+  try {
+    // Get data from header counters for total counts
+    const headerTabsCount = document.getElementById('headerTabsCount').textContent;
+    const headerWindowsCount = document.getElementById('headerWindowsCount').textContent;
+
+    if (headerTabsCount !== '-') {
+      allWindows.textContent = headerTabsCount;
+    }
+
+    if (headerWindowsCount !== '-') {
+      windowsCount.textContent = headerWindowsCount;
+    }
+
+    // FIXED: Get real current window tab count (same logic as background.js badge)
+    if (window.ChromeAPI) {
+      const currentWindowTabs = await window.ChromeAPI.queryTabs({ "currentWindow": true });
+      currentWindow.textContent = currentWindowTabs.length;
+    } else {
+      // Fallback to header data if ChromeAPI not available
+      currentWindow.textContent = headerTabsCount !== '-' ? headerTabsCount : '-';
+    }
+  } catch (error) {
+    console.error('Failed to update badge previews:', error);
+    // Fallback values on error
+    currentWindow.textContent = '-';
+  }
+}
+
+// Classic interaction enhancements
+function initializeClassicInteractions() {
+  // Enhanced option row click handlers
+  document.querySelectorAll('.option-row-classic').forEach(row => {
+    row.addEventListener('click', function(e) {
+      if (e.target.type === 'radio' || e.target.type === 'checkbox') return;
+
+      const input = this.querySelector('input[type="radio"], input[type="checkbox"]');
+      if (input) {
+        input.click();
+      }
+    });
+
+    // Keyboard navigation
+    row.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const input = this.querySelector('input[type="radio"], input[type="checkbox"]');
+        if (input) {
+          input.click();
+        }
+      }
+    });
+  });
+}
+
+// Stats synchronization
+function synchronizeStats() {
+  const mainTabsCount = document.getElementById('tabsCount');
+  const mainWindowsCount = document.getElementById('windowsCount');
+  const headerTabs = document.getElementById('headerTabsCount');
+  const headerWindows = document.getElementById('headerWindowsCount');
+  const feedbackTabs = document.getElementById('feedbackTabsCount');
+  const feedbackWindows = document.getElementById('feedbackWindowsCount');
+
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(async function(mutation) {
+      if (mutation.type === 'childList') {
+        // Sync header stats
+        if (mainTabsCount.textContent !== '-') {
+          headerTabs.textContent = mainTabsCount.textContent;
+          feedbackTabs.textContent = mainTabsCount.textContent;
+        }
+        if (mainWindowsCount.textContent !== '-') {
+          headerWindows.textContent = mainWindowsCount.textContent;
+          feedbackWindows.textContent = mainWindowsCount.textContent;
+        }
+
+        await updateBadgePreviews();
+      }
+    });
+  });
+
+  if (mainTabsCount) observer.observe(mainTabsCount, { childList: true, subtree: true });
+  if (mainWindowsCount) observer.observe(mainWindowsCount, { childList: true, subtree: true });
+}
+
+// Status monitoring for toast integration
+function initializeStatusMonitoring() {
+  const originalStatus = document.getElementById('status');
+  const observer = new MutationObserver(function(mutations) {
+    mutations.forEach(function(mutation) {
+      if (mutation.type === 'childList' && originalStatus.textContent.trim()) {
+        showToast(originalStatus.textContent.trim());
+        originalStatus.textContent = '';
+      }
+    });
+  });
+  observer.observe(originalStatus, { childList: true, subtree: true });
+}
+
+// Classic UI features are now initialized in the main DOMContentLoaded handler above

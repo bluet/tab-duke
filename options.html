@@ -1,79 +1,290 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tab Duke Options</title>
-  <style>
-    body {
-      padding: 10px;
-    }
-  </style>
+  <link rel="stylesheet" href="dist/tailwind.min.css">
+  <link rel="stylesheet" href="options.css">
 </head>
-
 <body>
-  <h3>Tab Duke Options</h3>
-  <p>Not just a tab man, not just a tab count, but a Tab Duke!</p>
-  <h4>Badge Display Options</h4>
-  <form id="popupOptionsForm">
-    <label><input type="radio" name="tabCountRadios" value="currentWindow">Show "tabs count
-      in current window" on extension badge<br></label>
-    <label><input type="radio" id="defaultPopupSelection" name="tabCountRadios" value="allWindows">Show "tabs count in all windows" on extension
-      badge<br></label>
-    <label><input type="radio" name="tabCountRadios" value="windowsCount">Show "windows count" on extension
-      badge<br></label>
-  </form>
-  <h4>Advanced Options</h4>
-  <label><input type="checkbox" id="tabDedupe" name="tabDedupe" value="dedupe">Detect and prompt duplicate tab
-    creation.<br></label>
-  <label><input type="checkbox" id="tabJanitor" name="tabJanitor" value="tabJanitor" />Auto-close tabs unused for more
-    than
-    <input type="number" id="tabJanitorDays" name="tabJanitorDays" value="5" min="1" max="30" /> days.</label><br>
-  <div id="status"></div>
-  <br>
-  <hr>
-  <h3>Current Stats</h3>
-  Total number of windows: <span id="windowsCount"></span> <br>
-  Total number of tabs: <span id="tabsCount"></span> <br>
-
-  <input type="button" id="refreshButton" value="Refresh Stats">
-  <br>
-  <br>
-  <hr>
-  <h3>Find Duplicates</h3>
-  <input type="button" id="scanDuplicateTabsButton" value="Scan Duplicate Tabs">
-  <input type="button" id="autoSelectButton" value="Auto-Select Duplicates">
-  <input type="button" id="bulkCloseButton" value="Bulk Close">
-
-  <hr>
-  <h3>Help & Feedback</h3>
-  <p>Having issues or suggestions? We'd love to hear from you!</p>
-  <p>
-    <strong>Report Issues:</strong>
-    <a href="https://github.com/bluet/tab-duke/issues/new" target="_blank" rel="noopener noreferrer" id="reportIssueLink">
-      🐛 Report Bug or Request Feature
-    </a>
-  </p>
-  <p>
-    <strong>View Known Issues:</strong>
-    <a href="https://github.com/bluet/tab-duke/issues" target="_blank" rel="noopener noreferrer" id="viewIssuesLink">
-      📋 Browse All Issues
-    </a>
-  </p>
-  <p style="font-size: 0.9em; color: #666;">
-    <strong>Performance Feedback:</strong> If you're using 500+ tabs or 10+ windows,
-    your feedback is especially valuable for improving extreme-scale performance.
-  </p>
-  <div style="background-color: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px;">
-    <strong>Quick Bug Report Template:</strong><br>
-    • Chrome Version: <span id="chromeVersion">Detecting...</span><br>
-    • Extension Version: <span id="extensionVersion">Loading...</span><br>
-    • Tab Count: <span id="feedbackTabsCount">-</span><br>
-    • Windows Count: <span id="feedbackWindowsCount">-</span><br>
-    Include this info when reporting issues for faster diagnosis.
+  <!-- Classic Toast System -->
+  <div id="statusToast" class="toast-classic">
+    <div class="toast-content">
+      <svg class="toast-icon" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+      </svg>
+      <p id="statusText" class="toast-message">Settings saved</p>
+    </div>
   </div>
+
+  <!-- Classic Header -->
+  <header class="header-classic">
+    <div class="container-classic">
+      <div class="header-content">
+        <div class="logo-section">
+          <div class="logo-icon">
+            <svg fill="currentColor" viewBox="0 0 20 20">
+              <path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM2 11a2 2 0 012-2h12a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4z"></path>
+            </svg>
+          </div>
+          <div>
+            <h1 class="header-title">Tab Duke</h1>
+            <p class="header-subtitle">Professional tab management</p>
+          </div>
+        </div>
+
+        <div class="header-stats">
+          <div class="header-stat">
+            <div class="header-stat-label">Windows</div>
+            <div class="header-stat-value" id="headerWindowsCount">-</div>
+          </div>
+          <div class="header-stat">
+            <div class="header-stat-label">Tabs</div>
+            <div class="header-stat-value" id="headerTabsCount">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container-classic">
+
+    <!-- Badge Display Configuration -->
+    <section class="card-classic">
+      <div class="section-header">
+        <h2 class="section-title">Badge Display</h2>
+        <p class="section-description">Choose what appears on your extension badge</p>
+      </div>
+      <div class="section-content">
+        <form id="popupOptionsForm">
+          <div class="option-row-classic">
+            <input type="radio" name="tabCountRadios" value="currentWindow" class="radio-classic focus-classic">
+            <div class="option-content">
+              <div class="option-title">Current Window</div>
+              <div class="option-description">Show tab count for the active window only</div>
+              <div class="option-hint">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                Perfect for focused single-window workflows
+              </div>
+            </div>
+            <div class="badge-classic" id="currentWindowBadgePreview">-</div>
+          </div>
+
+          <div class="option-row-classic">
+            <input type="radio" id="defaultPopupSelection" name="tabCountRadios" value="allWindows" class="radio-classic focus-classic">
+            <div class="option-content">
+              <div class="option-title">All Windows</div>
+              <div class="option-description">Show total tab count across all browser windows</div>
+              <div class="option-hint">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                Comprehensive overview of your entire browsing session
+              </div>
+            </div>
+            <div class="badge-classic" id="allWindowsBadgePreview">-</div>
+          </div>
+
+          <div class="option-row-classic">
+            <input type="radio" name="tabCountRadios" value="windowsCount" class="radio-classic focus-classic">
+            <div class="option-content">
+              <div class="option-title">Window Count</div>
+              <div class="option-description">Display the number of open browser windows</div>
+              <div class="option-hint">
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                </svg>
+                Ideal for tracking multi-window productivity workflows
+              </div>
+            </div>
+            <div class="badge-classic" id="windowsCountBadgePreview">-</div>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Advanced Options -->
+    <section class="card-classic">
+      <div class="section-header">
+        <h2 class="section-title">Advanced Options</h2>
+        <p class="section-description">Intelligent tab management features</p>
+      </div>
+      <div class="section-content">
+        <div class="option-row-classic">
+          <input type="checkbox" id="tabDedupe" name="tabDedupe" value="dedupe" class="checkbox-classic focus-classic">
+          <div class="option-content">
+            <div class="option-title">Duplicate Tab Detection</div>
+            <div class="option-description">Automatically detect and prompt when opening duplicate tabs</div>
+            <div class="option-hint">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              </svg>
+              Helps maintain clean workspace and reduces memory usage
+            </div>
+          </div>
+        </div>
+
+        <div class="option-row-classic">
+          <input type="checkbox" id="tabJanitor" name="tabJanitor" value="tabJanitor" class="checkbox-classic focus-classic">
+          <div class="option-content">
+            <div class="option-title">Auto-close Unused Tabs</div>
+            <div class="option-description">Automatically close tabs that haven't been accessed recently</div>
+            <div class="option-controls">
+              <span class="small-text-graphite">Close after</span>
+              <input type="number" id="tabJanitorDays" name="tabJanitorDays" value="5" min="1" max="30" class="input-classic">
+              <span class="small-text-graphite">days of inactivity</span>
+            </div>
+            <div class="option-hint">
+              <svg fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              </svg>
+              Prevents tab overload while preserving important sessions
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Current Statistics -->
+    <section class="card-classic">
+      <div class="section-header">
+        <div class="section-header-with-action">
+          <div>
+            <h2 class="section-title">Current Statistics</h2>
+            <p class="section-description">Real-time tab and window counts</p>
+          </div>
+          <button id="refreshButton" class="btn-primary-classic focus-classic">
+            <svg class="small-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
+      </div>
+      <div class="section-content">
+
+        <div class="stats-grid-classic">
+          <div class="stat-card-classic">
+            <div class="stat-label">Total Windows</div>
+            <div class="stat-value" id="windowsCount">-</div>
+          </div>
+          <div class="stat-card-classic">
+            <div class="stat-label">Total Tabs</div>
+            <div class="stat-value" id="tabsCount">-</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Duplicate Scanner -->
+    <section class="card-classic">
+      <div class="section-header">
+        <h2 class="section-title">Find Duplicate Tabs</h2>
+        <p class="section-description">Identify and manage duplicate tabs across all windows</p>
+      </div>
+      <div class="section-content">
+        <div class="button-group">
+          <button id="scanDuplicateTabsButton" class="btn-primary-classic focus-classic">
+            <svg class="small-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd"></path>
+            </svg>
+            Scan for Duplicates
+          </button>
+
+          <button id="autoSelectButton" class="btn-secondary-classic focus-classic">
+            <svg class="small-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+            </svg>
+            Auto-Select Duplicates
+          </button>
+
+          <button id="bulkCloseButton" class="btn-danger-classic focus-classic">
+            <svg class="small-icon" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" clip-rule="evenodd"></path>
+              <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3l1.586-1.586a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 111.414-1.414L9 9V6a1 1 0 011-1z" clip-rule="evenodd"></path>
+            </svg>
+            Bulk Close Selected
+          </button>
+        </div>
+
+        <!-- Duplicate Results Container -->
+        <div id="duplicateResultsContainer" class="duplicate-results hidden">
+          <div class="duplicate-info">
+            <strong>Tip:</strong> Double-click any row to switch to that tab. The first occurrence of each duplicate is preserved by default.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Help & Feedback -->
+    <section class="card-classic">
+      <div class="section-header">
+        <h2 class="section-title">Help & Feedback</h2>
+        <p class="section-description">Get support and help improve Tab Duke</p>
+      </div>
+      <div class="section-content">
+        <div class="help-links">
+          <a href="https://github.com/bluet/tab-duke/issues/new" target="_blank" rel="noopener noreferrer"
+             id="reportIssueLink" class="help-link focus-classic">
+            <div class="help-icon danger">
+              <svg class="small-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="help-title">Report Bug</h3>
+              <p class="help-description">Found an issue? Let us know!</p>
+            </div>
+          </a>
+
+          <a href="https://github.com/bluet/tab-duke/issues" target="_blank" rel="noopener noreferrer"
+             id="viewIssuesLink" class="help-link focus-classic">
+            <div class="help-icon info">
+              <svg class="small-icon" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="help-title">Browse Issues</h3>
+              <p class="help-description">View known issues and requests</p>
+            </div>
+          </a>
+        </div>
+
+        <div class="system-info">
+          <h4>System Information</h4>
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-label">Chrome Version:</span>
+              <span id="chromeVersion" class="info-value">Detecting...</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Extension Version:</span>
+              <span id="extensionVersion" class="info-value">Loading...</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Tab Count:</span>
+              <span id="feedbackTabsCount" class="info-value">-</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Windows Count:</span>
+              <span id="feedbackWindowsCount" class="info-value">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Hidden Status Element for Compatibility -->
+  <div id="status" class="hidden-status"></div>
+
+  <!-- Scripts -->
+  <script src="src/utils/FaviconValidatorGlobal.js"></script>
+  <script type="module" src="options.js"></script>
 </body>
-
-<script src="src/utils/FaviconValidatorGlobal.js"></script>
-<script type="module" src="options.js"></script>
-
 </html>

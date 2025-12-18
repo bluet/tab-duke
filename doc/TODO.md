@@ -27,12 +27,33 @@
 
 ### **Optional Enhancements (P2-P3)**
 - [x] **Chrome Web Store Final Compliance Audit** - COMPLETED (Published and compliant)
-- [ ] **AI Features Foundation** - Prepare infrastructure for AI-enhanced tab management
-  - Add "scripting" permission to manifest.json (currently missing, required for AI features)
-  - Tab title modification using chrome.scripting.executeScript() (no direct Chrome API available)
-  - Page content extraction for AI processing
-  - AI provider integration architecture with secure API key management
-  - Alternative: Consider "activeTab" permission for better privacy
+- [ ] **Tab Archiving System** - Transform cleanup from fear-based to confidence-based
+  - **Problem**: Users fear short cleanup intervals due to permanent tab loss
+  - **Solution**: Archive-first approach (like Chrome Android, but preserves tab groups)
+  - **Foundation**: Existing `tab_activation_history` tracking + 9.8MB storage capacity (~20k tabs)
+  - **Impact**: Enables safe 1-24 hour cleanup vs current 5+ day minimum
+  - **Implementation**: See `tmp/tab-archiving/tab-archiving-implementation-plan.md` for complete technical details
+  - **Estimate**: 7-10 hours (3 phases: core archive, UI integration, advanced features)
+- [ ] **Advanced AI-Enhanced Tab Management** - 5 user-requested intelligent features
+  - **Implementation Plan**: See `tmp/ai-features/ai-features-implementation-plan.md` for technical details
+  - **UX Design**: See `tmp/ai-features/ai-features-ux-design.md` for interface design and user flows
+  - **Estimate**: 45-59 hours (6-8 weeks part-time) - Major feature expansion
+  - **Key Features**:
+    - ArrowRight key page content summary (6-8h) - Preview content without tab switching
+    - Natural language search (8-10h) - "找昨天的 React 教學" style queries
+    - Progressive search suggestions (4-6h) - AI suggestions when no results found
+    - Intelligent tab regrouping (12-15h) - Smart organization across windows
+    - Smart workspace management (15-20h) - AI-driven tab triage and focus mode
+  - **Technical Foundation**: Chrome Built-in AI vs Transformers.js decision pending
+  - **Storage Evolution**: Chrome Storage + IndexedDB hybrid for extended tab metadata
+  - **Dependencies**: Benefits from tab archiving system for historical search
+  - **Critical Note**: Chrome AI availability requires pre-implementation survey
+- [ ] **UI/UX Enhancement** - Modernize interface with advanced Tailwind CSS patterns
+  - **Options Page**: Clean, elegant design using Tailwind component patterns
+  - **Popup Page**: Smooth, sleek interface with enhanced Tailwind styling
+  - **Design System**: Consistent theming, spacing, and interactive elements using CSS utility classes
+  - **Keep Current Architecture**: Enhance vanilla JS + service-oriented architecture without framework rewrites
+  - **Benefits**: Better user experience while maintaining current performance and bundle size efficiency
 - [ ] **Advanced User Preferences** - Additional customizable settings
   - Search mode preferences (case-sensitive, regex)
   - Default view preferences
