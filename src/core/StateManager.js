@@ -300,13 +300,23 @@ class StateManager {
 		const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
 		if (selectedItems.length === 0) return;
 
-		const tabIDs = Array.from(selectedItems).map(item => item.tabid);
+		const tabIDs = Array.from(selectedItems).map(item => Number(item.dataset.tabid));
 
 		// Close tabs via TabManager
 		const results = await this.tabManager.closeTabs(tabIDs);
 
-		// Remove items from DOM
-		selectedItems.forEach(item => item.remove());
+		// Remove only successfully closed tabs from DOM
+		const successfulTabIds = new Set(results.success);
+		selectedItems.forEach(item => {
+			if (successfulTabIds.has(Number(item.dataset.tabid))) {
+				item.remove();
+			}
+		});
+
+		// Log any failures for debugging
+		if (results.failed.length > 0) {
+			console.warn('TabDuke: Failed to close', results.failed.length, 'tabs:', results.failed);
+		}
 
 		// Update counters (handled by SearchEngine or main)
 		this.searchEngine?.performSearch(this.searchInput.value);
@@ -349,7 +359,7 @@ class StateManager {
 					const confirmed = confirm(`⚠️ Unable to open ${selectedItems.length} selected tabs at once.\nDo you mean to open focused "${tabTitle}"?`);
 
 					if (confirmed) {
-						this.tabManager.switchToTab(currentItem.tabid, currentItem.windowId);
+						this.tabManager.switchToTab(Number(currentItem.dataset.tabid), Number(currentItem.dataset.windowid));
 					}
 					// If canceled, do nothing - selections remain intact
 				}
@@ -358,7 +368,7 @@ class StateManager {
 				const currentIndex = this.focusManager.getCurrentItemIndex();
 				const currentItem = context.items[currentIndex];
 				if (currentItem) {
-					this.tabManager.switchToTab(currentItem.tabid, currentItem.windowId);
+					this.tabManager.switchToTab(Number(currentItem.dataset.tabid), Number(currentItem.dataset.windowid));
 				}
 			}
 		}

@@ -114,15 +114,15 @@ describe('StateManager Unit Tests - Real Implementation', () => {
         for (let i = 1; i <= 3; i++) {
             const item = document.createElement('div');
             item.className = 'list-item';
-            item.tabid = i;
-            item.windowId = 1;
+            item.dataset.tabid = i;
+            item.dataset.windowid = 1;
             item.textContent = `Tab ${i}`;
             mockCurrentWindow.appendChild(item);
 
             const allItem = document.createElement('div');
             allItem.className = 'list-item';
-            allItem.tabid = i + 10;
-            allItem.windowId = 2;
+            allItem.dataset.tabid = i + 10;
+            allItem.dataset.windowid = 2;
             allItem.textContent = `All Tab ${i}`;
             mockAllWindow.appendChild(allItem);
         }
@@ -309,8 +309,8 @@ describe('StateManager Unit Tests - Real Implementation', () => {
             const items = [...mockCurrentWindow.querySelectorAll('.list-item')];
             items[0].classList.add('selected');
             items[1].classList.add('selected');
-            items[0].tabid = 1;
-            items[1].tabid = 2;
+            items[0].dataset.tabid = 1;
+            items[1].dataset.tabid = 2;
 
             mockSearchInput.value = 'test search';
 
@@ -376,8 +376,8 @@ describe('StateManager Unit Tests - Real Implementation', () => {
             mockTitleSpan.textContent = 'GitHub';
             mockTitleDiv.appendChild(mockTitleSpan);
             items[0].appendChild(mockTitleDiv);
-            items[0].tabid = 123;
-            items[0].windowId = 456;
+            items[0].dataset.tabid = 123;
+            items[0].dataset.windowid = 456;
 
             const mockContext = {
                 items: items,
@@ -413,8 +413,8 @@ describe('StateManager Unit Tests - Real Implementation', () => {
         test('should perform normal navigation when single item focused', () => {
             const mockEvent = { key: 'Enter' };
             const items = [...mockCurrentWindow.querySelectorAll('.list-item')];
-            items[0].tabid = 123;
-            items[0].windowId = 456;
+            items[0].dataset.tabid = 123;
+            items[0].dataset.windowid = 456;
 
             const mockContext = {
                 items: items,

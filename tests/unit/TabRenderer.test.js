@@ -211,8 +211,8 @@ describe('TabRenderer Unit Tests - Real Implementation', () => {
             // Basic structure
             expect(listItem.tagName).toBe('DIV');
             expect(listItem.classList.contains('list-item')).toBe(true);
-            expect(listItem.tabid).toBe(1);
-            expect(listItem.windowId).toBe(100);
+            expect(listItem.dataset.tabid).toBe('1');
+            expect(listItem.dataset.windowid).toBe('100');
 
             // Accessibility attributes
             expect(listItem.getAttribute('role')).toBe('option');
@@ -260,7 +260,8 @@ describe('TabRenderer Unit Tests - Real Implementation', () => {
 
             expect(titleSpan.textContent).toBe('Google');
             expect(titleSpan.getAttribute('title')).toBe('https://google.com');
-            expect(titleSpan.getAttribute('tabid')).toBe('1');
+            // tabid is now stored on the list item as data-tabid, not on the span
+            expect(titleSpan.getAttribute('tabid')).toBeNull();
         });
 
         test('should handle tabs without titles', () => {
@@ -365,65 +366,48 @@ describe('TabRenderer Unit Tests - Real Implementation', () => {
             const window100Items = renderer.getTabItemsForWindow(100);
             const window200Items = renderer.getTabItemsForWindow(200);
 
-            // NOTE: This method has a bug - it sets windowId as DOM property, not HTML attribute
-            // CSS selectors can't find DOM properties, so this returns 0 for both
-            expect(window100Items.length).toBe(0); // Bug: selector can't find DOM properties
-            expect(window200Items.length).toBe(0); // Bug: selector can't find DOM properties
+            // The method now correctly uses data-windowid attribute selectors
+            expect(window100Items.length).toBe(4); // Both views contain window 100 tabs
+            expect(window200Items.length).toBe(1); // Only all view contains window 200 tabs
 
-            // Test alternative approach: verify windowId property is actually set correctly
-            const allItems = renderer.getAllTabItems();
-            const window100ItemsActual = allItems.filter(item => item.windowId === 100);
-            const window200ItemsActual = allItems.filter(item => item.windowId === 200);
-
-            expect(window100ItemsActual.length).toBe(4); // Both views contain window 100 tabs
-            expect(window200ItemsActual.length).toBe(1); // Only all view contains window 200 tabs
+            // Verify the returned items are correct
+            window100Items.forEach(item => {
+                expect(Number(item.dataset.windowid)).toBe(100);
+            });
+            window200Items.forEach(item => {
+                expect(Number(item.dataset.windowid)).toBe(200);
+            });
         });
 
         test('should update tab item visual state', () => {
             renderer.updateTabItem(1, { active: false, selected: true });
 
-            // The selector looks for .list-item[tabid="1"] but tabid is on the span inside
-            // So the selector finds 0 items and no updates occur
-            const tabItems = document.querySelectorAll('.list-item[tabid="1"]');
-            expect(tabItems.length).toBe(0); // Selector mismatch: attribute is on inner span
+            // The selector now correctly looks for .list-item[data-tabid="1"]
+            const tabItems = document.querySelectorAll('.list-item[data-tabid="1"]');
+            expect(tabItems.length).toBe(2); // Tab with ID 1 exists in both views
 
-            // Verify no visual changes occurred (selector found nothing to update)
-            const allItems = renderer.getAllTabItems();
-            const tab1Items = allItems.filter(item => {
-                const titleSpan = item.querySelector('span[tabid="1"]');
-                return titleSpan !== null;
-            });
-
-            expect(tab1Items.length).toBe(2); // Tab with ID 1 exists in both views
-            tab1Items.forEach(item => {
-                expect(item.classList.contains('tab-active')).toBe(true); // Still active
-                expect(item.classList.contains('selected')).toBe(false); // Not selected
+            // Verify visual changes occurred
+            tabItems.forEach(item => {
+                expect(item.classList.contains('tab-active')).toBe(false); // active: false applied
+                expect(item.classList.contains('selected')).toBe(true); // selected: true applied
+                expect(item.classList.contains('bg-blue-100')).toBe(true); // selected styling applied
             });
         });
 
         test('should remove tab items from DOM', () => {
             // Verify tab 1 exists in both views initially
-            const allItemsBefore = renderer.getAllTabItems();
-            const tab1ItemsBefore = allItemsBefore.filter(item => {
-                const titleSpan = item.querySelector('span[tabid="1"]');
-                return titleSpan !== null;
-            });
+            const tab1ItemsBefore = document.querySelectorAll('.list-item[data-tabid="1"]');
             expect(tab1ItemsBefore.length).toBe(2);
 
             renderer.removeTabItem(1);
 
-            // The selector looks for .list-item[tabid="1"] but tabid is on the span inside
-            // So the selector finds 0 items and no removal occurs
-            const tabItemsViaSelector = document.querySelectorAll('.list-item[tabid="1"]');
-            expect(tabItemsViaSelector.length).toBe(0); // Selector mismatch
+            // The selector now correctly finds and removes items with data-tabid="1"
+            const tab1ItemsAfter = document.querySelectorAll('.list-item[data-tabid="1"]');
+            expect(tab1ItemsAfter.length).toBe(0); // Items successfully removed
 
-            // Verify items still exist (since selector couldn't find them to remove)
+            // Verify total item count decreased
             const allItemsAfter = renderer.getAllTabItems();
-            const tab1ItemsAfter = allItemsAfter.filter(item => {
-                const titleSpan = item.querySelector('span[tabid="1"]');
-                return titleSpan !== null;
-            });
-            expect(tab1ItemsAfter.length).toBe(2); // Items still exist
+            expect(allItemsAfter.length).toBe(3); // Started with 5, removed 2 (tab ID 1 in both views)
         });
 
         test('should handle updating non-existent tab items', () => {

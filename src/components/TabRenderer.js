@@ -230,8 +230,9 @@ class TabRenderer {
 			listItem.classList.add("tab-active");
 		}
 		listItem.tabIndex = -1; // Roving tabindex: only focused item has tabIndex="0"
-		listItem.tabid = tabID;
-		listItem.windowId = data.windowId;
+		// Use data-* attributes for web standards compliance
+		listItem.dataset.tabid = tabID;
+		listItem.dataset.windowid = data.windowId;
 
 		// ARIA attributes for accessibility
 		this.addAccessibilityAttributes(listItem, data, tabID);
@@ -313,7 +314,6 @@ class TabRenderer {
 
 		const titleSpan = document.createElement("span");
 		titleSpan.style.cursor = "pointer";
-		titleSpan.setAttribute("tabid", tabID);
 		titleSpan.setAttribute("title", data.url || "");
 		titleSpan.textContent = data.title || "Untitled";
 
@@ -433,7 +433,7 @@ class TabRenderer {
 	 * @returns {HTMLElement[]} - Array of tab items for the window
 	 */
 	getTabItemsForWindow(windowId) {
-		return Array.from(document.querySelectorAll(`.list-item[windowId="${windowId}"]`));
+		return Array.from(document.querySelectorAll(`.list-item[data-windowid="${windowId}"]`));
 	}
 
 	/**
@@ -442,7 +442,7 @@ class TabRenderer {
 	 * @param {Object} updates - Updates to apply {active: boolean, selected: boolean}
 	 */
 	updateTabItem(tabID, updates) {
-		const items = document.querySelectorAll(`.list-item[tabid="${tabID}"]`);
+		const items = document.querySelectorAll(`.list-item[data-tabid="${tabID}"]`);
 
 		items.forEach(item => {
 			if (updates.active !== undefined) {
@@ -468,7 +468,7 @@ class TabRenderer {
 	 * @param {number} tabID - Tab ID to remove
 	 */
 	removeTabItem(tabID) {
-		const items = document.querySelectorAll(`.list-item[tabid="${tabID}"]`);
+		const items = document.querySelectorAll(`.list-item[data-tabid="${tabID}"]`);
 		items.forEach(item => item.remove());
 	}
 }

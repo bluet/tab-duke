@@ -135,8 +135,12 @@ document.addEventListener("DOMContentLoaded", () => {
 		const checkboxes = table.querySelectorAll("input[type='checkbox']");
 		for (let checkbox of checkboxes) {
 			if (checkbox.checked) {
-				await ChromeAPI.removeTabs(parseInt(checkbox.value));
-				checkbox.parentElement.parentElement.remove(); // Remove the row from the table
+				const success = await ChromeAPI.removeTabs(parseInt(checkbox.value));
+				if (success) {
+					checkbox.parentElement.parentElement.remove(); // Remove the row from the table
+				} else {
+					console.error('TabDuke: Failed to close tab:', checkbox.value);
+				}
 			}
 		}
 
@@ -238,8 +242,12 @@ document.addEventListener("DOMContentLoaded", () => {
 					const closeButton = document.createElement("button");
 					closeButton.textContent = "Close Tab";
 					closeButton.addEventListener("click", async () => {
-						await ChromeAPI.removeTabs(tab.id);
-						row.remove(); // Remove the row from the table
+						const success = await ChromeAPI.removeTabs(tab.id);
+						if (success) {
+							row.remove(); // Remove the row from the table
+						} else {
+							console.error('TabDuke: Failed to close tab:', tab.id);
+						}
 					});
 					actionCell.appendChild(closeButton);
 					row.appendChild(actionCell);

@@ -126,17 +126,18 @@ class TabDukeApp {
 	}
 
 	// Delegate tab click handling to services
-	handleTabClick(event) {
+	async handleTabClick(event) {
 		const listItem = event.target.closest('.list-item');
 		if (!listItem) return;
 
-		const tabId = listItem.tabid;
-		const windowId = listItem.windowId;
+		// TabRenderer sets these as data-* attributes
+		const tabId = Number(listItem.dataset.tabid);
+		const windowId = Number(listItem.dataset.windowid);
 
 		if (event.target.classList.contains('remove-btn')) {
 			// Remove button clicked
 			event.stopPropagation();
-			this.removeTabItem(tabId);
+			await this.removeTabItem(tabId);
 		} else if (event.ctrlKey || event.metaKey) {
 			// Ctrl+click: Toggle individual selection
 			this.handleCtrlClick(event, listItem);
@@ -152,9 +153,15 @@ class TabDukeApp {
 
 	async removeTabItem(tabId) {
 		// Use services to handle tab removal
-		await this.tabManager.closeTab(tabId);
-		this.tabRenderer.removeTabItem(tabId);
-		this.updateCounterText();
+		const success = await this.tabManager.closeTab(tabId);
+		if (success) {
+			// Efficiently remove only the closed tab from DOM
+			this.tabRenderer.removeTabItem(tabId);
+			this.updateCounterText();
+		} else {
+			console.error('TabDuke: Failed to close tab:', tabId);
+			// Tab remains open - UI correctly shows it still exists
+		}
 	}
 
 	handleCtrlClick(event, listItem) {

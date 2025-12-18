@@ -243,14 +243,14 @@ class FocusManager {
 		const allWindowItems = [...document.getElementById("allWindow").querySelectorAll('.list-item')];
 
 		// Set focus data for Current tab view
-		const currentTabIndex = currentWindowItems.findIndex(item => item.tabid === currentTabId);
+		const currentTabIndex = currentWindowItems.findIndex(item => Number(item.dataset.tabid) === currentTabId);
 		if (currentTabIndex >= 0) {
 			this.focusRestoreData.currentTab.lastFocusedIndex = currentTabIndex;
 			this.focusRestoreData.currentTab.relativePosition = this.calculateRelativePosition(currentTabIndex, currentWindowItems.length);
 		}
 
 		// Set focus data for All tab view
-		const allTabIndex = allWindowItems.findIndex(item => item.tabid === currentTabId);
+		const allTabIndex = allWindowItems.findIndex(item => Number(item.dataset.tabid) === currentTabId);
 		if (allTabIndex >= 0) {
 			this.focusRestoreData.allTab.lastFocusedIndex = allTabIndex;
 			this.focusRestoreData.allTab.relativePosition = this.calculateRelativePosition(allTabIndex, allWindowItems.length);
@@ -541,7 +541,7 @@ class FocusManager {
 
 		// First try: exact tabid match
 		items.forEach((item, index) => {
-			if (item.tabid == currentTabId) {
+			if (Number(item.dataset.tabid) == currentTabId) {
 				tabData.currentIndex = index;
 				found = true;
 				return;

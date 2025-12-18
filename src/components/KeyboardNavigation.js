@@ -157,11 +157,24 @@ class KeyboardNavigation {
 				break;
 			case 'a':
 			case 'A':
-				this.handleSelectAll(e, context);
+				// Only handle Ctrl+A / Meta+A for select all on list items
+				// Regular 'a' should fall through to default for auto-focus search
+				if ((e.ctrlKey || e.metaKey) && document.activeElement &&
+				    document.activeElement.classList.contains('list-item')) {
+					this.handleSelectAll(e, context);
+				} else {
+					this.handleDefault(e);
+				}
 				break;
 			case 'g':
 			case 'G':
-				this.handleJumpToActive(e, context);
+				// Only handle Ctrl+G / Meta+G for active tab jumping
+				// Regular 'g' should fall through to default for auto-focus search
+				if (e.ctrlKey || e.metaKey) {
+					this.handleJumpToActive(e, context);
+				} else {
+					this.handleDefault(e);
+				}
 				break;
 			default:
 				this.handleDefault(e);
@@ -234,6 +247,8 @@ class KeyboardNavigation {
 		if (e.ctrlKey || e.metaKey) {
 			this.stateManager.handleTabViewSwitch(e, context);
 		}
+		// For regular left/right arrows without modifiers, allow default behavior
+		// This enables cursor navigation in search input
 	}
 
 	/**
@@ -347,13 +362,9 @@ class KeyboardNavigation {
 	 * @since 0.1.0
 	 */
 	handleSelectAll(e, context) {
-		// Only handle select-all when focus is specifically on a list item
-		if ((e.ctrlKey || e.metaKey) && document.activeElement &&
-		    document.activeElement.classList.contains('list-item')) {
-			e.preventDefault();
-			this.stateManager.selectAllVisible(context.items);
-		}
-		// For all other contexts (search input, tab buttons, etc.), allow default behavior
+		// This method is only called when we actually want to select all
+		e.preventDefault();
+		this.stateManager.selectAllVisible(context.items);
 	}
 
 	/**
