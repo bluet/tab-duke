@@ -1,6 +1,6 @@
 {
   "name": "tab-duke",
-  "description": "Tab Duke is a heavily rewritten, updated fork of Tab Count and is inspired by Tabman Tabs Manager.  It is a Chrome extension that displays the count and list of open tabs from the current or all windows (configurable). It also allows you to select and/or close them.",
+  "description": "Professional tab manager with lightning-fast search, bulk operations, and keyboard shortcuts. Built for power users managing extreme tab loads with production-grade reliability and comprehensive testing.",
   "version": "1.2.0",
   "type": "module",
   "devDependencies": {

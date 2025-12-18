@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TabDuke Tabs management Chrome extension",
+  "name": "TabDuke - Professional Tab Manager",
   "version": "1.2.0",
-  "description": "Displays the count and list of open tabs from current or all windows (configurable) and allows you to select and/or close them.",
+  "description": "Professional tab manager with lightning-fast search, bulk operations, and shortcuts for power users managing 100+ tabs.",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
