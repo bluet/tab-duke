@@ -1,19 +1,11 @@
 /**
- * @fileoverview TabDuke Type Definitions - Comprehensive TypeScript-style type definitions
- * @description Central type definitions for TabDuke Chrome extension providing consistent
- * typing across all services with Chrome API integration and extension-specific context.
- *
- * @author TabDuke Development Team
- * @since 0.1.0
- * @version 1.0.0
- * @chrome-extension Manifest V3 compatible
- * @requires chrome.tabs - Chrome tabs API access
- * @requires chrome.windows - Chrome windows API access
+ * Central type definitions for TabDuke Chrome extension with TypeScript-style JSDoc annotations.
+ * Provides consistent typing across all services with Chrome API integration.
  */
 
 /**
  * Chrome Extension API Types
- * Enhanced Chrome API types with extension-specific properties
+ * Enhanced Chrome API types with extension-specific properties.
  */
 
 /**
@@ -52,7 +44,7 @@
 
 /**
  * Navigation and State Management Types
- * Core data structures for TabDuke's navigation system
+ * Core data structures for TabDuke's navigation system.
  */
 
 /**
@@ -94,7 +86,7 @@
 
 /**
  * Tab Management and Operations Types
- * Types for Chrome tab operations and results
+ * Types for Chrome tab operations and results.
  */
 
 /**
@@ -127,7 +119,7 @@
 
 /**
  * Search and Filtering Types
- * Types for search functionality and filtering operations
+ * Types for search functionality and filtering operations.
  */
 
 /**
@@ -161,7 +153,7 @@
 
 /**
  * Event Handling and Delegation Types
- * Types for event management and user interactions
+ * Types for event management and user interactions.
  */
 
 /**
@@ -187,7 +179,7 @@
 
 /**
  * Accessibility and ARIA Types
- * Types for accessibility features and screen reader support
+ * Types for accessibility features and screen reader support.
  */
 
 /**
@@ -215,7 +207,7 @@
 
 /**
  * Performance and Optimization Types
- * Types for performance monitoring and optimization
+ * Types for performance monitoring and optimization.
  */
 
 /**
@@ -231,7 +223,7 @@
 
 /**
  * Chrome Extension Error Types
- * Standardized error types for Chrome extension operations
+ * Standardized error types for Chrome extension operations.
  */
 
 /**
@@ -248,16 +240,8 @@
 /**
  * JSDoc Type Definitions for TabDuke
  *
- * NOTE: JSDoc @typedef types cannot be exported in JavaScript modules.
- * These type definitions are available globally within the project for:
- * - IDE IntelliSense and autocomplete
- * - Type checking with tools that understand JSDoc
- * - Documentation generation
- *
- * To use these types in other files, reference them in JSDoc comments:
- * @example
- * // @param {ChromeTabExtended} tab - Extended Chrome tab object
- * // @returns {Promise<TabCloseResults>} Results of close operation
+ * These type definitions are available globally within the project for IDE IntelliSense,
+ * type checking, and documentation generation. Reference them in JSDoc comments throughout the codebase.
  */
 
 // No exports needed - JSDoc types are globally available in the project

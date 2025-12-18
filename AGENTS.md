@@ -45,7 +45,7 @@ TabDuke follows a **service-oriented architecture** achieving 87% complexity red
 - `npm install` (or `npm ci`): install dependencies.
 - `npm run build-css`: build Tailwind to `dist/tailwind.min.css` (required for `popup.html` styling).
 - `npm run watch-css`: watch and rebuild Tailwind during UI work.
-- `npm test`: run 233 comprehensive tests (Jest + JSDOM, ~1.7s runtime).
+- `npm test`: run 232 comprehensive tests (Jest + JSDOM, ~2.7s runtime).
 - `npm run test:coverage`: run tests with coverage report (61.35% strategic coverage).
 - `npm run test:watch`: run tests in watch mode for development.
 - `npm run test:integration`: run Chrome browser integration tests (requires display).
@@ -79,6 +79,42 @@ Local run (manual): open `chrome://extensions` → enable **Developer mode** →
 - ESLint rules (`.eslintrc.cjs`): double quotes, semicolons, `quote-props: "always"`, `space-before-function-paren: "always"`.
 - Prefer small, single-responsibility modules under `src/` (services) and keep UI wiring in `popup.js`.
 
+## JSDoc Documentation Standards
+
+**TabDuke follows industry-standard JSDoc** for auto-generated API documentation and developer tooling:
+
+### Core Principles
+- **Context-aware descriptions**: Explain what/why in 1-2 concise lines
+- **TypeScript-style annotations**: Precise types for IntelliSense and documentation generation
+- **No maintenance bloat**: Remove @version, @since, @author (Git provides versioning/authorship)
+- **Essential context only**: When/why to use the API, not implementation details
+
+### File Headers
+```javascript
+/**
+ * Core service for Chrome tab operations with comprehensive error handling.
+ * Optimized for extreme tab usage (1300+ tabs across 30+ windows).
+ */
+```
+
+### Method Documentation
+```javascript
+/**
+ * Switches to specific tab with smart window management.
+ * Handles same-window (direct) vs cross-window (focus first) cases automatically.
+ * @param {number} tabID - Tab ID to switch to
+ * @param {number} windowID - Window ID containing the tab
+ * @returns {Promise<boolean>} True if successful, false on error
+ */
+```
+
+### What to Avoid
+- Verbose architectural essays in file headers
+- @example blocks (code is self-documenting)
+- Multi-paragraph descriptions explaining implementation
+- Maintenance metadata (@version, @since, @author, @throws)
+- Abstract architectural concepts (save for README.md)
+
 ## Key Architectural Decisions
 
 ### Technology Choices
@@ -108,7 +144,7 @@ Local run (manual): open `chrome://extensions` → enable **Developer mode** →
 ## Testing Guidelines
 
 ### Automated Testing (Jest + JSDOM)
-- **Unit Tests**: 233 tests covering all major components with real business logic
+- **Unit Tests**: 232 tests covering all major components with real business logic
 - **Coverage Focus**: Strategic 61.35% coverage targeting critical paths
 - **Integration Tests**: Chrome API mocking with both callback and Promise patterns
 - **Performance**: Tests complete in ~1.7s for rapid development feedback

@@ -1,43 +1,11 @@
 /**
- * @fileoverview AccessibilityHelpers - ARIA management and screen reader support
- * @description Provides comprehensive accessibility support for the TabDuke extension
- * with proper ARIA attributes, screen reader announcements, and WCAG compliance.
+ * ARIA management and screen reader support with proper accessibility attributes and WCAG compliance.
  * Extracted from popup.js following service-oriented architecture principles.
- *
- * @author TabDuke Development Team
- * @since 0.1.0
- * @version 1.0.0
  */
 
 /**
- * AccessibilityHelpers class - ARIA management and screen reader support
- *
- * Extracted from popup.js following the TODO.md service decomposition plan.
- * Provides comprehensive accessibility support ensuring TabDuke is fully usable
- * with screen readers, keyboard navigation, and assistive technologies.
- *
- * Key responsibilities:
- * - ARIA active descendant management for focus tracking
- * - Selection state announcements for multi-selection feedback
- * - Tab state management for screen reader context
- * - Live region announcements for dynamic content changes
- * - Accessibility attribute coordination across components
- * - WCAG 2.1 compliance implementation
- *
- * Accessibility features:
- * - Screen reader live regions with appropriate politeness levels
- * - Roving tabindex pattern for list navigation
- * - ARIA selection states and active descendant tracking
- * - Semantic announcements for user actions
- * - Keyboard navigation feedback
- *
- * @class AccessibilityHelpers
- * @since 0.1.0
- *
- * @example
- * const accessibilityHelpers = new AccessibilityHelpers();
- * accessibilityHelpers.announceToScreenReader('5 tabs selected');
- * accessibilityHelpers.updateAriaSelected();
+ * ARIA management and screen reader support service.
+ * Handles ARIA attributes, live regions, roving tabindex, and screen reader announcements for WCAG compliance.
  */
 class AccessibilityHelpers {
 	constructor() {
@@ -47,7 +15,7 @@ class AccessibilityHelpers {
 	}
 
 	/**
-	 * Initialize screen reader support elements
+	 * Initializes screen reader support elements with proper ARIA attributes.
 	 */
 	initializeScreenReaderSupport() {
 		// Create announcement element if it doesn't exist
@@ -64,7 +32,7 @@ class AccessibilityHelpers {
 	}
 
 	/**
-	 * Update ARIA active descendant for focused item
+	 * Updates ARIA active descendant for focused item.
 	 * @param {HTMLElement} focusedItem - Currently focused item
 	 */
 	updateActiveDescendant(focusedItem) {
@@ -77,7 +45,7 @@ class AccessibilityHelpers {
 	}
 
 	/**
-	 * Update ARIA selection states for all items in active view
+	 * Updates ARIA selection states for all items in active view.
 	 */
 	updateAriaSelected() {
 		const activeTabContent = document.querySelector('.tab-content.active');
@@ -92,7 +60,7 @@ class AccessibilityHelpers {
 	}
 
 	/**
-	 * Update tab states for accessibility
+	 * Updates tab states for accessibility with proper ARIA attributes.
 	 * @param {number} activeTabIndex - Index of the active tab
 	 */
 	updateTabAriaStates(activeTabIndex) {

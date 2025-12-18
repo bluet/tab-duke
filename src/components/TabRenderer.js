@@ -1,54 +1,19 @@
 /**
- * @fileoverview TabRenderer - DOM rendering and event delegation service
- * @description Manages all DOM rendering operations for tab lists with optimized
- * performance and proper event delegation. Extracted from popup.js following
- * service-oriented architecture principles for maintainable rendering logic.
- *
- * @author TabDuke Development Team
- * @since 0.1.0
- * @version 1.0.0
+ * DOM rendering and event delegation service for tab lists with optimized performance.
+ * Extracted from popup.js following service-oriented architecture principles.
  */
 
 /**
- * TabRenderer class - DOM rendering and event delegation service
- *
- * Extracted from popup.js following the TODO.md service decomposition plan.
- * Manages all DOM rendering operations for tab lists with performance-optimized
- * approaches and comprehensive event delegation patterns.
- *
- * Key responsibilities:
- * - Render tab lists in both Current Window and All Windows views
- * - Build individual tab list items with proper styling and accessibility attributes
- * - Manage window grouping and headers for multi-window display
- * - Setup and manage event delegation for optimal performance
- * - Handle favicon loading, error states, and visual indicators
- * - Coordinate with accessibility helpers for screen reader support
- *
- * Performance optimizations:
- * - Event delegation (2600+ individual listeners → 2 delegated)
- * - Batch DOM manipulation with DocumentFragment
- * - Optimized window grouping algorithms
- * - Lazy favicon loading with error fallbacks
- *
- * @class TabRenderer
- * @since 0.1.0
- *
- * @example
- * const renderer = new TabRenderer();
- * renderer.initialize(tabClickHandler);
- * renderer.renderTabs(allTabs, currentWindowId);
+ * DOM rendering and event delegation service for tab lists.
+ * Handles tab list rendering, window grouping, event delegation, and favicon management.
  */
 
 import { isSafeFaviconUrl as validateFaviconUrl, getDefaultFaviconUrl } from '../utils/FaviconValidator.js';
 
 class TabRenderer {
 	/**
-	 * Create a new TabRenderer instance
-	 *
-	 * Initializes the renderer with default state. Event delegation and click
-	 * handlers are set up during initialization to maintain clean separation.
-	 *
-	 * @since 0.1.0
+	 * Creates a new TabRenderer instance with default state.
+	 * Event delegation and click handlers are set up during initialization.
 	 */
 	constructor() {
 		/** @private */
@@ -58,37 +23,19 @@ class TabRenderer {
 	}
 
 	/**
-	 * Initialize the renderer with required dependencies
-	 *
-	 * Must be called before rendering to establish the click event handler.
-	 * The handler will be called for all tab click events via delegation.
-	 *
+	 * Initialize the renderer with click event handler.
+	 * Must be called before rendering. Handler receives tab click events via delegation.
 	 * @param {Function} tabClickHandler - Handler for tab click events
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * renderer.initialize((tabId, windowId) => {
-	 *   console.log(`Tab ${tabId} clicked in window ${windowId}`);
-	 * });
 	 */
 	initialize(tabClickHandler) {
 		this.clickHandler = tabClickHandler;
 	}
 
 	/**
-	 * Render tabs in both Current and All Windows views
-	 *
-	 * Main rendering method that populates both tab views with optimized DOM
-	 * manipulation. Uses window grouping for organization and sets up event
-	 * delegation for performance.
-	 *
+	 * Main rendering method that populates both Current and All Windows views.
+	 * Uses window grouping for organization and sets up event delegation for performance.
 	 * @param {chrome.tabs.Tab[]} items - Array of tab objects from Chrome API
 	 * @param {number} currentWindowId - ID of the current browser window
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Render all tabs with current window context
-	 * renderer.renderTabs(allTabs, currentWindow.id);
 	 */
 	renderTabs(items, currentWindowId) {
 		const tabContentCurrent = document.getElementById("currentWindow");
@@ -165,7 +112,7 @@ class TabRenderer {
 	}
 
 	/**
-	 * Render Current Window tab view (flat list)
+	 * Renders Current Window tab view as flat list without window headers.
 	 * @param {Map} windowMap - Map of windowId to tab arrays
 	 * @param {number} currentWindowId - ID of current window
 	 * @param {HTMLElement} container - Container element
@@ -180,7 +127,7 @@ class TabRenderer {
 	}
 
 	/**
-	 * Render All Windows tab view (grouped by window)
+	 * Renders All Windows tab view grouped by window with headers.
 	 * @param {Map} windowMap - Map of windowId to tab arrays
 	 * @param {HTMLElement} container - Container element
 	 */
@@ -198,9 +145,9 @@ class TabRenderer {
 	}
 
 	/**
-	 * Create a window container with header
+	 * Creates a window container div with header for All Windows view.
 	 * @param {number} windowID - Window ID
-	 * @returns {HTMLElement} - Window container div
+	 * @returns {HTMLElement} Window container div
 	 */
 	createWindowContainer(windowID) {
 		const windowDiv = document.createElement("div");
@@ -215,10 +162,10 @@ class TabRenderer {
 	}
 
 	/**
-	 * Build an individual tab list item
+	 * Builds an individual tab list item with styling and accessibility attributes.
 	 * @param {chrome.tabs.Tab} data - Tab data object
 	 * @param {number} tabIndex - Index of the tab
-	 * @returns {HTMLElement} - List item element
+	 * @returns {HTMLElement} List item element
 	 */
 	buildListItem(data, tabIndex) {
 		const listItem = document.createElement("div");
@@ -257,7 +204,7 @@ class TabRenderer {
 	}
 
 	/**
-	 * Add accessibility attributes to list item
+	 * Adds accessibility attributes to list item for screen readers.
 	 * @param {HTMLElement} listItem - List item element
 	 * @param {chrome.tabs.Tab} data - Tab data
 	 * @param {number} tabID - Tab ID
@@ -270,9 +217,9 @@ class TabRenderer {
 	}
 
 	/**
-	 * Create favicon image element
+	 * Creates favicon image element with error handling and security validation.
 	 * @param {chrome.tabs.Tab} data - Tab data
-	 * @returns {HTMLElement} - Favicon image element
+	 * @returns {HTMLElement} Favicon image element
 	 */
 	createFavicon(data) {
 		const favicon = document.createElement("img");
@@ -303,10 +250,10 @@ class TabRenderer {
 	}
 
 	/**
-	 * Create title element
+	 * Creates title element with truncation and tooltip.
 	 * @param {chrome.tabs.Tab} data - Tab data
 	 * @param {number} tabID - Tab ID
-	 * @returns {HTMLElement} - Title container element
+	 * @returns {HTMLElement} Title container element
 	 */
 	createTitle(data, tabID) {
 		const titleDiv = document.createElement("div");
@@ -322,8 +269,8 @@ class TabRenderer {
 	}
 
 	/**
-	 * Create remove button element
-	 * @returns {HTMLElement} - Remove button element
+	 * Creates remove button element.
+	 * @returns {HTMLElement} Remove button element
 	 */
 	createRemoveButton() {
 		const removeBtn = document.createElement("span");
@@ -333,10 +280,10 @@ class TabRenderer {
 	}
 
 	/**
-	 * Create accessibility description for screen readers
+	 * Creates accessibility description for screen readers.
 	 * @param {chrome.tabs.Tab} data - Tab data
 	 * @param {number} tabID - Tab ID
-	 * @returns {HTMLElement} - Description element
+	 * @returns {HTMLElement} Description element
 	 */
 	createAccessibilityDescription(data, tabID) {
 		const description = document.createElement('div');
@@ -347,7 +294,8 @@ class TabRenderer {
 	}
 
 	/**
-	 * Setup event delegation for optimal performance
+	 * Sets up event delegation for optimal performance.
+	 * Reduces 2600+ individual listeners to 2 delegated listeners.
 	 */
 	setupEventDelegation() {
 		if (this.eventDelegationSetup || !this.clickHandler) {

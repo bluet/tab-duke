@@ -1,47 +1,19 @@
 /**
- * @fileoverview StateManager - Complex state operations and keyboard orchestration
- * @description Manages complex application state including multi-select operations,
- * context-aware keyboard navigation, and sophisticated escape sequences. Extracted from
- * popup.js following service-oriented architecture principles.
- *
- * @author TabDuke Development Team
- * @since 0.1.0
- * @version 1.0.0
- * @chrome-extension Manifest V3 compatible
- * @requires chrome.tabs - For tab state management and operations
- * @performance Optimized for 1300+ tabs across 30+ windows
- * @complexity O(n) for most operations where n = visible tab count
- * @imports {NavigationContext, KeyboardEventContext, AccessibilityState} from '../types/TabDukeTypes.js'
+ * Manages complex application state and coordinates cross-service operations.
+ * Handles multi-select operations, keyboard navigation, and escape sequences.
  */
 
 /**
- * StateManager class - Manages UI state and coordinates cross-service operations
- *
- * Central state management service that coordinates between FocusManager, TabManager,
- * SearchEngine, and AccessibilityHelpers. Handles complex user interactions like
- * multi-selection, keyboard navigation, and state persistence.
- *
- * @class StateManager
- * @since 0.1.0
- *
- * @example
- * const stateManager = new StateManager(
- *   focusManager, tabManager, searchEngine, accessibilityHelpers
- * );
- * stateManager.initialize(searchInput, tabs);
+ * Central state management service coordinating FocusManager, TabManager, SearchEngine.
+ * Handles complex user interactions like multi-selection and keyboard navigation.
  */
 class StateManager {
 	/**
-	 * Create a new StateManager instance
-	 *
-	 * Initializes the state manager with references to other core services.
-	 * Sets up initial state variables and prepares for DOM initialization.
-	 *
+	 * Creates StateManager with service dependencies for coordinated state management.
 	 * @param {FocusManager} focusManager - Focus management service
 	 * @param {TabManager} tabManager - Tab operations service
 	 * @param {SearchEngine} searchEngine - Search functionality service
 	 * @param {AccessibilityHelpers} accessibilityHelpers - Accessibility support service
-	 * @since 0.1.0
 	 */
 	constructor(focusManager, tabManager, searchEngine, accessibilityHelpers) {
 		this.focusManager = focusManager;
@@ -58,19 +30,9 @@ class StateManager {
 	}
 
 	/**
-	 * Initialize state manager with DOM references
-	 *
-	 * Must be called after DOM is ready to establish references to key UI elements.
-	 * Enables the state manager to interact with the user interface.
-	 *
+	 * Initializes state manager with DOM references after DOM is ready.
 	 * @param {HTMLElement} searchInput - Search input element
 	 * @param {NodeList} tabs - Tab button elements for view switching
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * const searchInput = document.getElementById('searchInput');
-	 * const tabs = document.querySelectorAll('.tab-button');
-	 * stateManager.initialize(searchInput, tabs);
 	 */
 	initialize(searchInput, tabs) {
 		this.searchInput = searchInput;
@@ -80,19 +42,10 @@ class StateManager {
 	// State management methods
 
 	/**
-	 * Handle list navigation (ArrowUp/Down in list)
-	 *
-	 * Manages vertical navigation through tab lists with wrap-around behavior.
-	 * Updates focus position and coordinates with FocusManager for visual feedback.
-	 *
+	 * Handles vertical navigation through tab lists with wrap-around behavior.
+	 * Coordinates with FocusManager for smooth visual feedback and position tracking.
 	 * @param {KeyboardEvent} e - Keyboard event (ArrowUp or ArrowDown)
 	 * @param {NavigationContext} context - Navigation context with items and state
-	 * @since 0.1.0
-	 *
-	 * @typedef {Object} NavigationContext
-	 * @property {HTMLElement[]} items - Array of list items
-	 * @property {number} currentTabIndex - Currently active tab index
-	 * @property {HTMLElement} activeTabContent - Active tab content element
 	 */
 	handleListNavigation(e, context) {
 		const direction = e.key === 'ArrowUp' ? -1 : 1;
@@ -186,19 +139,10 @@ class StateManager {
 	}
 
 	/**
-	 * Handle window section navigation (Alt+ArrowUp/Down in All Windows tab)
-	 *
-	 * Enables jumping between window sections in the "All Windows" view using
-	 * Alt+ArrowUp and Alt+ArrowDown. Only works when focused on list items,
-	 * not when search input is active.
-	 *
+	 * Handles window section navigation (Alt+ArrowUp/Down) in "All Windows" view.
+	 * Jumps between window sections, only active when focused on list items, not search input.
 	 * @param {KeyboardEvent} e - Keyboard event (Alt+ArrowUp or Alt+ArrowDown)
 	 * @param {NavigationContext} context - Navigation context with items and state
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // User presses Alt+ArrowDown in All Windows tab
-	 * stateManager.handleWindowSectionNavigation(event, context);
 	 */
 	handleWindowSectionNavigation(e, context) {
 		if (context.currentTabIndex !== 1 || this.searchInput === document.activeElement) return;
@@ -274,27 +218,10 @@ class StateManager {
 	}
 
 	/**
-	 * Handle bulk delete operation
-	 *
-	 * Closes multiple selected tabs in parallel and removes them from the DOM.
-	 * Coordinates with TabManager for actual tab closure and SearchEngine for
-	 * counter updates. Used when Delete key is pressed with multiple selections.
-	 *
+	 * Handles bulk delete operation for multiple selected tabs with parallel closure.
+	 * Coordinates with TabManager for tab closure and SearchEngine for counter updates.
 	 * @param {NavigationContext} context - Navigation context with active tab content
-	 * @returns {Promise<TabCloseResults>} Promise resolving to closure results with error details
-	 * @throws {chrome.runtime.lastError} When Chrome API tab closure fails
-	 * @throws {Error} When no tabs are selected or context is invalid
-	 * @performance Parallel tab closure for optimal speed with large selections
-	 * @chrome-api Uses ChromeAPI.removeTabs() via TabManager with error handling
-	 * @accessibility Announces closure results to screen readers
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Close all selected tabs with error handling
-	 * const results = await stateManager.handleBulkDelete(navigationContext);
-	 * if (!results.allSuccessful) {
-	 *   console.warn(`Failed to close ${results.totalFailed} tabs`);
-	 * }
+	 * @returns {Promise<TabCloseResults>} Results with success/failure arrays and accessibility announcements
 	 */
 	async handleBulkDelete(context) {
 		const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
@@ -375,22 +302,10 @@ class StateManager {
 	}
 
 	/**
-	 * Handle Escape sequence (improved context-aware state clearing)
-	 *
-	 * Implements a 5-priority context-aware Escape sequence designed for list-centric UX.
+	 * Handles progressive Escape sequence with context-aware state clearing.
 	 * Priority system: multi-select warning → selections → search text → search focus → popup close.
-	 * Provides intuitive state clearing that respects user context and workflow.
-	 *
 	 * @param {KeyboardEvent} e - Keyboard event (Escape key)
 	 * @param {NavigationContext} context - Navigation context with active tab content
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Progressive escape behavior:
-	 * // 1st press: Clear multi-select warning
-	 * // 2nd press: Clear selections or search text (context-dependent)
-	 * // 3rd press: Jump between search and list
-	 * // 4th press: Allow popup close
 	 */
 	handleEscapeSequence(e, context) {
 		const selectedItems = context.activeTabContent.querySelectorAll(".list-item.selected");
@@ -428,18 +343,8 @@ class StateManager {
 	}
 
 	/**
-	 * Jump to currently active tab with context-aware behavior (forward)
-	 *
-	 * Provides context-aware active tab jumping that adapts based on current view:
-	 * - Current Window view: Jump to active tab in current window
-	 * - All Windows view: Cycle forward through active tabs across all windows
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // In Current Window view: jumps to active tab
-	 * // In All Windows view: cycles to next active tab across windows
-	 * stateManager.jumpToCurrentlyActiveTab();
+	 * Jump to currently active tab with context-aware behavior (forward).
+	 * Current Window: jump to active tab; All Windows: cycle forward through active tabs.
 	 */
 	jumpToCurrentlyActiveTab() {
 		const currentlyActiveTabContent = document.querySelector('.tab-content.active');
@@ -454,18 +359,8 @@ class StateManager {
 	}
 
 	/**
-	 * Jump to currently active tab with context-aware behavior (reverse)
-	 *
-	 * Provides reverse context-aware active tab jumping:
-	 * - Current Window view: Jump to active tab in current window (same as forward)
-	 * - All Windows view: Cycle backward through active tabs across all windows
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // In Current Window view: same as forward (jumps to active tab)
-	 * // In All Windows view: cycles backward to previous active tab
-	 * stateManager.jumpToCurrentlyActiveTabReverse();
+	 * Jump to currently active tab with context-aware behavior (reverse).
+	 * Current Window: same as forward; All Windows: cycle backward through active tabs.
 	 */
 	jumpToCurrentlyActiveTabReverse() {
 		const currentlyActiveTabContent = document.querySelector('.tab-content.active');
@@ -480,16 +375,8 @@ class StateManager {
 	}
 
 	/**
-	 * Jump to active tab in current view (for Current tab)
-	 *
-	 * Finds and focuses the currently active tab in the Current Window view.
-	 * Used by both forward and reverse active tab jumping in Current Window context.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Jump to the active tab in current window view
-	 * stateManager.jumpToActiveTabInCurrentView();
+	 * Finds and focuses the currently active tab in Current Window view.
+	 * Used by both forward and reverse active tab jumping.
 	 */
 	jumpToActiveTabInCurrentView() {
 		const currentTabContent = document.getElementById('currentWindow');
@@ -504,54 +391,25 @@ class StateManager {
 	}
 
 	/**
-	 * Cycle through active tabs across windows in All view (forward)
-	 *
-	 * Cycles forward through active tabs across all windows in the All Windows view.
+	 * Cycles forward through active tabs across all windows in All Windows view.
 	 * Delegates to the generic cycling method with forward direction.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Move to next active tab across all windows
-	 * stateManager.cycleToNextActiveTabInAllView();
 	 */
 	cycleToNextActiveTabInAllView() {
 		this.cycleActiveTabsInAllView(1); // Forward direction
 	}
 
 	/**
-	 * Cycle through active tabs across windows in All view (backward)
-	 *
-	 * Cycles backward through active tabs across all windows in the All Windows view.
+	 * Cycles backward through active tabs across all windows in All Windows view.
 	 * Delegates to the generic cycling method with backward direction.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Move to previous active tab across all windows
-	 * stateManager.cycleToPreviousActiveTabInAllView();
 	 */
 	cycleToPreviousActiveTabInAllView() {
 		this.cycleActiveTabsInAllView(-1); // Backward direction
 	}
 
 	/**
-	 * Generic cycling method for active tabs in All view
-	 *
 	 * Core implementation for cycling through active tabs across windows.
-	 * Handles complex logic for determining the next target based on current
-	 * focus position and active tab locations across multiple windows.
-	 *
+	 * Handles complex logic for determining next target based on current focus position.
 	 * @param {number} direction - Navigation direction (1 for forward, -1 for backward)
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Cycle forward through active tabs
-	 * stateManager.cycleActiveTabsInAllView(1);
-	 *
-	 * @example
-	 * // Cycle backward through active tabs
-	 * stateManager.cycleActiveTabsInAllView(-1);
 	 */
 	cycleActiveTabsInAllView(direction) {
 		const allTabContent = document.getElementById('allWindow');
@@ -612,18 +470,9 @@ class StateManager {
 
 
 	/**
-	 * Clear all selections
-	 *
-	 * Removes selection state from all provided items and updates ARIA attributes
-	 * for accessibility. Used by Escape sequence and other deselection operations.
-	 *
+	 * Removes selection state from all provided items and updates ARIA attributes.
+	 * Used by Escape sequence and other deselection operations.
 	 * @param {NodeList|HTMLElement[]} selectedItems - Selected items to clear
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Clear all currently selected items
-	 * const selected = document.querySelectorAll('.list-item.selected');
-	 * stateManager.clearSelections(selected);
 	 */
 	clearSelections(selectedItems) {
 		selectedItems.forEach(item => {
@@ -635,37 +484,19 @@ class StateManager {
 	// State getters and setters
 
 	/**
-	 * Get current item index (delegates to FocusManager)
-	 *
 	 * Returns the index of the currently focused item by delegating to FocusManager.
 	 * FocusManager is the single source of truth for focus position.
-	 *
 	 * @returns {number} Current item index in the active view
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Get the currently focused item index
-	 * const currentIndex = stateManager.getCurrentItemIndex();
-	 * console.log(`Currently focused on item ${currentIndex}`);
 	 */
 	getCurrentItemIndex() {
 		return this.focusManager.getCurrentItemIndex();
 	}
 
 	/**
-	 * Set current item index (delegates to FocusManager)
-	 *
-	 * Legacy method kept for compatibility. StateManager no longer maintains
-	 * its own currentItemIndex - FocusManager is the single source of truth.
-	 * This method does nothing but is preserved to avoid breaking existing code.
-	 *
+	 * Legacy method kept for compatibility - does nothing.
+	 * FocusManager is the single source of truth for focus position.
 	 * @param {number} index - New current item index (ignored)
 	 * @deprecated Use FocusManager methods directly for focus manipulation
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // This method is deprecated - use FocusManager directly instead
-	 * // focusManager.focusAndUpdateIndex(item, index, items);
 	 */
 	setCurrentItemIndex(index) {
 		// StateManager no longer maintains its own currentItemIndex

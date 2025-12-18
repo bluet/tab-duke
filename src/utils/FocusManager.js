@@ -1,50 +1,16 @@
 /**
- * @fileoverview FocusManager - Focus restoration and navigation service
- * @description Manages complex focus state restoration across tab views with intelligent
- * position memory and accessibility-first design. Provides smooth scrolling utilities
- * and roving tabindex management for optimal keyboard navigation experience.
- *
- * @author TabDuke Development Team
- * @since 0.1.0
- * @version 1.0.0
+ * Focus restoration and navigation service with intelligent position memory across tab views.
+ * Provides smooth scrolling utilities and roving tabindex management for accessibility.
  */
 
 /**
- * FocusManager class - Advanced focus restoration and navigation service
- *
- * Extracted from popup.js following service-oriented architecture principles.
- * Manages complex focus restoration across tab views with intelligent position memory
- * and provides professional accessibility implementation with smart scrolling behavior.
- *
- * Key responsibilities:
- * - Independent focus restoration per tab view (current/all windows)
- * - Smart scrolling with sticky header awareness
- * - Roving tabindex management for WCAG compliance
- * - Relative position calculations for consistent UX
- * - Accessibility integration with screen readers
- *
- * @class FocusManager
- * @since 0.1.0
- *
- * @example
- * const focusManager = new FocusManager();
- * focusManager.focusAndUpdateIndex(item, 5, allItems, 'smooth');
- * focusManager.saveCurrentFocusPosition(items);
- * focusManager.restoreSavedFocusPosition(items);
+ * Advanced focus restoration and navigation service.
+ * Manages independent focus restoration per tab view with smart scrolling and roving tabindex.
  */
 class FocusManager {
 	/**
-	 * Create a new FocusManager instance
-	 *
-	 * Initializes focus restoration data structure with independent focus tracking
-	 * for both Current Window and All Windows views. Each view maintains its own
-	 * position history, enabling seamless tab switching without losing context.
-	 *
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * const focusManager = new FocusManager();
-	 * // Focus data is automatically initialized for both tab views
+	 * Creates a new FocusManager instance with independent focus tracking.
+	 * Each view maintains its own position history for seamless tab switching.
 	 */
 	constructor() {
 		/**
@@ -82,14 +48,10 @@ class FocusManager {
 	 */
 
 	/**
-	 * Set the global state reference (deprecated - now using per-tab indexes)
-	 *
-	 * Legacy method kept for compatibility. Focus management now uses independent
-	 * per-tab indexing instead of a global state object. This method does nothing.
-	 *
-	 * @param {Object} state - Global state object with currentItemIndex (ignored)
+	 * Legacy method kept for compatibility - does nothing.
+	 * Focus management now uses independent per-tab indexing.
+	 * @param {Object} state - Global state object (ignored)
 	 * @deprecated Use per-tab focus tracking instead
-	 * @since 0.1.0
 	 */
 	setState(state) {
 		// Legacy method - no longer needed as we use per-tab indexing
@@ -141,26 +103,10 @@ class FocusManager {
 	}
 
 	/**
-	 * Restore focus to previously saved position for the current tab
-	 *
-	 * Intelligently restores focus using multiple fallback strategies:
-	 * 1. Exact index match (if still valid and visible)
-	 * 2. Relative position calculation
-	 * 3. Currently active browser tab
-	 * 4. First visible item
-	 *
-	 * Each tab view maintains independent focus history for seamless switching.
-	 *
+	 * Restores focus to previously saved position using multiple fallback strategies.
+	 * Tries exact index, relative position, active tab, then first visible item.
 	 * @param {HTMLElement[]} items - Items in the current view to restore focus within
 	 * @returns {boolean} True if focus was successfully restored, false otherwise
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Restore focus after switching tab views
-	 * const restored = focusManager.restoreSavedFocusPosition(currentViewItems);
-	 * if (!restored) {
-	 *   console.log('Could not restore focus - no valid items found');
-	 * }
 	 */
 	restoreSavedFocusPosition(items) {
 		this.updateActiveTabName(); // Update which tab is now active
@@ -206,17 +152,9 @@ class FocusManager {
 	}
 
 	/**
-	 * Save the current focus position for later restoration
-	 *
+	 * Saves the current focus position for later restoration.
 	 * Stores both exact index and relative position for robust restoration.
-	 * Relative position provides fallback when list length changes.
-	 *
 	 * @param {HTMLElement[]} items - Current items list to calculate position within
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Save current position before switching views
-	 * focusManager.saveCurrentFocusPosition(currentItems);
 	 */
 	saveCurrentFocusPosition(items) {
 		const tabData = this.getCurrentTabData();
@@ -225,16 +163,9 @@ class FocusManager {
 	}
 
 	/**
-	 * Initialize focus data for the currently active browser tab
-	 *
-	 * Sets initial focus positions in both tab views based on the currently
-	 * active browser tab. Ensures consistent starting position across views.
-	 *
+	 * Initializes focus data based on the currently active browser tab.
+	 * Sets consistent starting position across both tab views.
 	 * @param {number} currentTabId - ID of the currently active browser tab
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Initialize focus to current active tab
 	 * focusManager.initializeFocusToCurrentTab(activeTab.id);
 	 */
 	initializeFocusToCurrentTab(currentTabId) {

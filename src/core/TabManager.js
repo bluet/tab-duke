@@ -1,21 +1,6 @@
 /**
- * @fileoverview TabManager - Core service for Chrome tab operations
- * @description Centralizes all Chrome tab API operations with comprehensive error handling,
- * type safety, and production-ready reliability patterns. Extracted from popup.js following
- * service-oriented architecture principles for optimal maintainability.
- *
- * @author TabDuke Development Team
- * @since 0.1.0
- * @version 1.0.0
- * @chrome-extension Manifest V3 compatible with chrome.tabs and chrome.windows APIs
- * @requires ChromeAPI - Centralized Chrome API wrapper for consistent async patterns
- * @requires chrome.tabs - Full Chrome tabs API access via ChromeAPI wrapper
- * @requires chrome.windows - Chrome windows API via ChromeAPI wrapper
- * @chrome-permissions tabs - Required for tab access and manipulation
- * @performance Optimized for extreme tab usage (1300+ tabs across 30+ windows)
- * @error-handling Comprehensive Chrome API error handling with fallback strategies
- * @imports {ChromeTabExtended, ChromeWindowExtended, TabCloseResults, ChromeExtensionError} from '../types/TabDukeTypes.js'
- * @imports ChromeAPI from '../utils/ChromeAPI.js'
+ * Core service for Chrome tab operations with comprehensive error handling.
+ * Optimized for extreme tab usage (1300+ tabs across 30+ windows).
  */
 
 import ChromeAPI from '../utils/ChromeAPI.js';
@@ -52,26 +37,11 @@ import ChromeAPI from '../utils/ChromeAPI.js';
  */
 class TabManager {
 	/**
-	 * Switch to a specific tab, handling same-window vs cross-window cases
-	 *
-	 * Intelligently switches to a tab by first determining if it's in the current
-	 * window or a different window, then applying the appropriate switching strategy.
-	 * For current window tabs, switches directly. For other window tabs, focuses
-	 * the window first, then switches to the tab.
-	 *
+	 * Switches to a specific tab with smart window management.
+	 * Handles same-window (direct) vs cross-window (focus first) cases automatically.
 	 * @param {number} tabID - Tab ID to switch to
 	 * @param {number} windowID - Window ID containing the tab
-	 * @returns {Promise<boolean>} True if successful, false if failed
-	 * @throws {Error} Returns false and logs error on failure
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * // Switch to tab in current window
-	 * const success = await tabManager.switchToTab(123, 456);
-	 *
-	 * @example
-	 * // Switch to tab in different window
-	 * const success = await tabManager.switchToTab(789, 101112);
+	 * @returns {Promise<boolean>} True if successful, false on error
 	 */
 	async switchToTab(tabID, windowID) {
 		if (!tabID || !windowID) {
@@ -134,26 +104,10 @@ class TabManager {
 	}
 
 	/**
-	 * Close multiple tabs in parallel for better performance
-	 *
-	 * Processes multiple tab closures concurrently and returns detailed results.
-	 * Useful for bulk operations like closing selected tabs.
-	 *
+	 * Closes multiple tabs in parallel for better performance.
+	 * Processes multiple tab closures concurrently, useful for bulk operations.
 	 * @param {number[]} tabIDs - Array of tab IDs to close
-	 * @returns {Promise<TabCloseResults>} Results summary with success and failure arrays
-	 * @throws {Error} Returns empty result object if input is invalid
-	 * @since 0.1.0
-	 *
-	 * @typedef {Object} TabCloseResults
-	 * @property {number[]} success - Array of successfully closed tab IDs
-	 * @property {number[]} failed - Array of tab IDs that failed to close
-	 *
-	 * @example
-	 * const results = await tabManager.closeTabs([123, 456, 789]);
-	 * console.log(`Closed ${results.success.length} tabs successfully`);
-	 * if (results.failed.length > 0) {
-	 *   console.warn(`Failed to close ${results.failed.length} tabs`);
-	 * }
+	 * @returns {Promise<{success: number[], failed: number[]}>} Results with success/failure arrays
 	 */
 	async closeTabs(tabIDs) {
 		if (!Array.isArray(tabIDs) || tabIDs.length === 0) {
@@ -178,44 +132,16 @@ class TabManager {
 	}
 
 	/**
-	 * Get all tabs in the current window
-	 *
-	 * Queries Chrome API for tabs in the currently focused window only.
-	 * Returns an empty array on error to ensure consistent return type.
-	 *
+	 * Gets all tabs in the current window for "Current Window" view.
 	 * @returns {Promise<chrome.tabs.Tab[]>} Array of tab objects in current window
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * const currentTabs = await tabManager.getCurrentWindowTabs();
-	 * console.log(`Current window has ${currentTabs.length} tabs`);
-	 * currentTabs.forEach(tab => {
-	 *   console.log(`${tab.title}: ${tab.url}`);
-	 * });
 	 */
 	async getCurrentWindowTabs() {
 		return await ChromeAPI.queryTabs({ "currentWindow": true });
 	}
 
 	/**
-	 * Get all tabs across all windows
-	 *
-	 * Queries Chrome API for every tab in every window. Useful for the "All Windows"
-	 * view and global tab operations. Returns empty array on error.
-	 *
-	 * @returns {Promise<chrome.tabs.Tab[]>} Array of all tab objects across all windows
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * const allTabs = await tabManager.getAllTabs();
-	 * console.log(`Total tabs across all windows: ${allTabs.length}`);
-	 *
-	 * // Group tabs by window
-	 * const tabsByWindow = allTabs.reduce((acc, tab) => {
-	 *   acc[tab.windowId] = acc[tab.windowId] || [];
-	 *   acc[tab.windowId].push(tab);
-	 *   return acc;
-	 * }, {});
+	 * Gets all tabs across all windows for "All Windows" view and global operations.
+	 * @returns {Promise<chrome.tabs.Tab[]>} Array of all tab objects, empty array on error
 	 */
 	async getAllTabs() {
 		return await ChromeAPI.queryTabs({});
@@ -223,20 +149,8 @@ class TabManager {
 
 
 	/**
-	 * Get the currently active tab in the current window
-	 *
-	 * Finds the tab that is currently active (focused) in the current window.
-	 * Returns null if no active tab is found or on error.
-	 *
+	 * Gets the currently active tab in the current window.
 	 * @returns {Promise<chrome.tabs.Tab|null>} Active tab object or null if not found
-	 * @since 0.1.0
-	 *
-	 * @example
-	 * const activeTab = await tabManager.getActiveTab();
-	 * if (activeTab) {
-	 *   console.log(`Currently viewing: ${activeTab.title}`);
-	 *   console.log(`URL: ${activeTab.url}`);
-	 * }
 	 */
 	async getActiveTab() {
 		try {
@@ -254,29 +168,19 @@ class TabManager {
 	// Private helper methods
 
 	/**
-	 * Get the current window object from Chrome API
-	 *
-	 * Internal helper method for getting the currently focused window.
-	 * Used by other methods that need window context.
-	 *
+	 * Gets the current window object from Chrome API.
 	 * @private
-	 * @returns {Promise<chrome.windows.Window|null>} Current window object or null if failed
-	 * @since 0.1.0
+	 * @returns {Promise<chrome.windows.Window|null>} Current window or null if failed
 	 */
 	async getCurrentWindow() {
 		return await ChromeAPI.getCurrentWindow();
 	}
 
 	/**
-	 * Activate a specific tab using Chrome tabs.update API
-	 *
-	 * Internal helper method that sets a tab as active. Used by switchToTab
-	 * after determining the appropriate switching strategy.
-	 *
+	 * Activates a specific tab using Chrome tabs.update API.
 	 * @private
 	 * @param {number} tabID - Tab ID to activate
-	 * @returns {Promise<boolean>} True if tab activation was successful
-	 * @since 0.1.0
+	 * @returns {Promise<boolean>} True if successful
 	 */
 	async activateTab(tabID) {
 		const result = await ChromeAPI.updateTab(tabID, { "active": true });
@@ -284,15 +188,10 @@ class TabManager {
 	}
 
 	/**
-	 * Focus a specific window using Chrome windows.update API
-	 *
-	 * Internal helper method that brings a window to the foreground.
-	 * Used when switching to tabs in different windows.
-	 *
+	 * Focuses a specific window using Chrome windows.update API.
 	 * @private
 	 * @param {number} windowID - Window ID to focus
-	 * @returns {Promise<boolean>} True if window focus was successful
-	 * @since 0.1.0
+	 * @returns {Promise<boolean>} True if successful
 	 */
 	async focusWindow(windowID) {
 		return await ChromeAPI.focusWindow(windowID);
